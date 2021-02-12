@@ -58,9 +58,7 @@ public:
     typedef typename Coord::value_type   Real;
     typedef core::topology::BaseMeshTopology::TriangleID TriangleID;
 public:
-    /// Force applied at each point
-    Data< Deriv > d_force;
-    Data<float> d_tearThreshold;
+    Data<Real> d_tearThreshold;
 
 protected:    
     /// Component constructor
@@ -71,11 +69,12 @@ protected:
     sofa::component::topology::TriangleSetTopologyModifier* triangleMod;
     sofa::component::topology::TriangleSetTopologyAlgorithms<defaulttype::Vec3Types>* triangleAlg;
     sofa::component::topology::TriangleSetGeometryAlgorithms<defaulttype::Vec3Types>* triangleGeo;
+
+    sofa::helper::vector<TriangleID> trianglesAroundLastVertex;
+    DataTypes::Coord a,b;
 public:
     /// Init function
     void init() override;
-
-    void handleEvent(sofa::core::objectmodel::Event* event) override;
 
     /// Forces addition for explicit and implicit integration schemes
     virtual void addForce (const core::MechanicalParams* params, DataVecDeriv& currentForce, const DataVecCoord& currentPosition, const DataVecDeriv& currentVelocities) override;
@@ -83,24 +82,9 @@ public:
     /// Forces addition for implicit integration schemes
     virtual void addDForce(const core::MechanicalParams* /*mparams*/, DataVecDeriv& /*d_df*/ , const DataVecDeriv& /*d_dx*/) override {}
 
-    virtual SReal getPotentialEnergy(const core::MechanicalParams* /*params*/, const DataVecCoord& /*x*/) const override { return 0; } // Keep it simple
-
-public:
-
-    /// Range for random force coefficient : [randForceMin ; randForceMax]
-    Data<float> d_randForceMinCoeff;
-    Data<float> d_randForceMaxCoeff;
-
-    /// Probability to change random force coefficient
-    Data<float> d_randForceCoeffChangeProba;
+    virtual SReal getPotentialEnergy(const core::MechanicalParams* /*params*/, const DataVecCoord& /*x*/) const override { return 0; } // Keep it simpl
 
 protected:
-    /// Used to get random numbers
-    sofa::helper::RandomGenerator m_randomGenerator;
-
-    /// Random coefficient applied to forces
-    float m_randForceCoeff;
-
     bool isTear;
     unsigned int stepCnt;
 

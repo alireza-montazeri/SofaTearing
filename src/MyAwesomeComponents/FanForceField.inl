@@ -23,19 +23,13 @@
 #define SOFA_COMPONENT_FORCEFIELD_FANFORCEFIELD_INL
 
 #include <MyAwesomeComponents/FanForceField.h>
-#include <ctime>
-
 
 namespace sofa::component::forcefield
 {
 
 template<class DataTypes>
 FanForceField<DataTypes>::FanForceField()
-    : d_force(initData(&d_force, "force", "applied force to all points"))
-    , d_randForceMinCoeff(initData(&d_randForceMinCoeff, "randForceMinCoeff", ""))
-    , d_randForceMaxCoeff(initData(&d_randForceMaxCoeff, "randForceMaxCoeff", ""))
-    , d_randForceCoeffChangeProba(initData(&d_randForceCoeffChangeProba, "randForceCoeffChangeProba", ""))
-    // و d_tearThreshold(initData(&d_tearThreshold, "tearThreshold", ""))
+    : d_tearThreshold(initData(&d_tearThreshold, "tearThreshold", ""))
 {
     // Nothing more is done here
 }
@@ -47,14 +41,12 @@ void FanForceField<DataTypes>::init()
     m_topology = this->getContext()->getMeshTopology(); // get the mesh topology to access to the points
     m_topology->getContext()->get(triangleFF);
     m_topology->getContext()->get(triangleMod);
+    m_topology->getContext()->get(triangleAlg);
+    m_topology->getContext()->get(triangleGeo);
+
     isTear = false;
     stepCnt=0;
-    // m_topology->getContext()->get(triangleAlg);
-    // m_topology->getContext()->get(triangleGeo);
-
-    // m_randomGenerator.initSeed( (unsigned int)time(NULL) ); // init random generator
-    // m_randForceCoeff = 1.0; // init random force coefficient
-
+    
     Inherit::init(); // call parent class init
 }
 
@@ -62,78 +54,65 @@ void FanForceField<DataTypes>::init()
 template<class DataTypes>
 void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/, DataVecDeriv& currentForce, const DataVecCoord& /*currentPosition*/, const DataVecDeriv& /*currentVelocities*/)
 {
-    // float randProba = m_randomGenerator.random<float>(0, 1);
-    // if( randProba < d_randForceCoeffChangeProba.getValue() )
-    // {
-    //     m_randForceCoeff = m_randomGenerator.random<float>(d_randForceMinCoeff.getValue(), d_randForceMaxCoeff.getValue()); // generating new random force coefficient
-    // }
-
-    // sofa::helper::WriteAccessor<core::objectmodel::Data< VecDeriv> > force = currentForce; // create writer on the current force
-    // for(int i = 0 ; i < m_topology->getNbPoints() ; i++)
-    // {
-    //     force[i] += d_force.getValue() * m_randForceCoeff; // Add asked force randomized with coeff
-    // }
     stepCnt++;
     if(stepCnt%5==0)
     {
-        size_t nbTriangle = m_topology->getNbTriangles();
         Real maxStressOfAll = 0;
-        TriangleID maxStressID=0;
+        TriangleID maxStressTriangleID=0;
         sofa::helper::vector<TriangleID> triangleToBeRemoved;
+
         sofa::helper::vector<triangleInfo> triangleInfo = *(triangleFF->triangleInfo.beginEdit());
-        for ( unsigned int i = 0 ; i < nbTriangle ; ++i)
+
+        for(unsigned int i=0;i<trianglesAroundLastVertex.size();i++)
         {
-            if(fabs(triangleInfo[i].maxStress) > maxStressOfAll)
+            if(triangleInfo[trianglesAroundLastVertex.at(i)].maxStress > maxStressOfAll)
             {
-                maxStressOfAll = fabs(triangleInfo[i].maxStress);
-                maxStressID = i;
+                maxStressOfAll = fabs(triangleInfo[trianglesAroundLastVertex.at(i)].maxStress);
+                maxStressTriangleID = trianglesAroundLastVertex.at(i);
             }
         }
 
-        if(maxStressOfAll > 100)
+        if(maxStressOfAll < d_tearThreshold.getValue())
         {
-            triangleToBeRemoved.push_back(maxStressID);
+            size_t nbTriangle = m_topology->getNbTriangles();
+
+            for (unsigned int i = 0 ; i < nbTriangle ; ++i)
+            {
+                if(fabs(triangleInfo[i].maxStress) > maxStressOfAll)
+                {
+                    maxStressOfAll = fabs(triangleInfo[i].maxStress);
+                    maxStressTriangleID = i;
+                }
+            }
+        }
+    
+        DataTypes::Coord principalStressDirection;
+        sofa::defaulttype::Vec<3,double> triangleNormal;
+
+        if(maxStressOfAll > d_tearThreshold.getValue())
+        {
+            if(trianglesAroundLastVertex.size() == 0)
+            {
+                a = triangleGeo->computeTriangleCenter(maxStressTriangleID);
+            }
+            else
+            {
+                a = b;
+            }
+            triangleNormal = triangleGeo->computeTriangleNormal(maxStressTriangleID);
+            principalStressDirection  = triangleInfo[maxStressTriangleID].principalStressDirection;
+
+            
+            
+            triangleToBeRemoved.push_back(maxStressTriangleID);
             triangleMod->removeItems(triangleToBeRemoved);
         }
         else
         {
-            maxStressID = 0;
+            maxStressTriangleID = 0;
         }
-        dmsg_warning() << "maxStressOfAll: " << maxStressOfAll << " maxStressID: " <<  maxStressID;
-    }
-}
-
-template< class DataTypes>
-void FanForceField< DataTypes >::handleEvent(core::objectmodel::Event *event)
-{
-    msg_error() << "test";
-    if (dynamic_cast< sofa::simulation::AnimateBeginEvent *>(event))
-    {
-        msg_error() << "test";
-    }
-    if (dynamic_cast< sofa::simulation::AnimateEndEvent *>(event))
-    {
-        // size_t nbTriangle = m_topology->getNbTriangles();
-        // Real maxStressOfAll = 0;
-        // TriangleID maxStressID=0;
-        // sofa::helper::vector<TriangleID> triangleToBeRemoved;
-        // sofa::helper::vector<triangleInfo> triangleInfo = *(triangleFF->triangleInfo.beginEdit());
-        // for ( unsigned int i = 0 ; i < nbTriangle ; ++i)
-        // {
-        //     if(fabs(triangleInfo[i].maxStress) > maxStressOfAll)
-        //     {
-        //         maxStressOfAll = fabs(triangleInfo[i].maxStress);
-        //         maxStressID = i;
-        //     }
-        // }
-        // if(maxStressOfAll > 1)
-        // {
-        //     triangleToBeRemoved.push_back(maxStressID);
-        //     triangleMod->removeTrianglesWarning(triangleToBeRemoved);
-        // }
-        // triangleToBeRemoved.push_back(100);
-        // triangleMod->removeTrianglesWarning(triangleToBeRemoved);
-        msg_error() << "test";
+        trianglesAroundLastVertex = m_topology->getTrianglesAroundVertex(10);
+        dmsg_warning() << "maxStressOfAll: " << maxStressOfAll << " maxStressID: " <<  trianglesAroundVertex;
     }
 }
 
