@@ -34,6 +34,9 @@
 #include <SofaBaseTopology/TriangleSetTopologyModifier.h>
 #include <SofaBaseTopology/TriangleSetGeometryAlgorithms.h>
 #include <SofaBaseTopology/TriangleSetTopologyAlgorithms.h>
+#include <sofa/helper/ColorMap.h>
+#include <sofa/defaulttype/RGBAColor.h>
+#include <sofa/core/visual/VisualParams.h>
 
 #include <sofa/helper/map.h>
 
@@ -57,8 +60,11 @@ public:
     typedef sofa::component::forcefield::TriangularFEMForceField<defaulttype::Vec3Types>::TriangleInformation triangleInfo;
     typedef typename Coord::value_type   Real;
     typedef core::topology::BaseMeshTopology::TriangleID TriangleID;
+    typedef core::topology::BaseMeshTopology::Triangle Triangle;
+    typedef core::topology::BaseMeshTopology::TrianglesAroundVertex TrianglesAroundVertex;
 public:
     Data<Real> d_tearThreshold;
+    double tearStep;
 
 protected:    
     /// Component constructor
@@ -71,7 +77,14 @@ protected:
     sofa::component::topology::TriangleSetGeometryAlgorithms<defaulttype::Vec3Types>* triangleGeo;
 
     sofa::helper::vector<TriangleID> trianglesAroundLastVertex;
-    DataTypes::Coord a,b;
+    Coord a;
+    Coord b;
+    unsigned int ind_ta;
+    unsigned int ind_tb;
+
+    std::vector<sofa::defaulttype::Vector3> lineVertices;
+    std::vector<sofa::defaulttype::Vector3> triangleVertices;
+    bool isDraw;
 public:
     /// Init function
     void init() override;
@@ -84,10 +97,10 @@ public:
 
     virtual SReal getPotentialEnergy(const core::MechanicalParams* /*params*/, const DataVecCoord& /*x*/) const override { return 0; } // Keep it simpl
 
+    void draw(const core::visual::VisualParams* vparams) override;
 protected:
-    bool isTear;
+    bool firstCut;
     unsigned int stepCnt;
-
 };
 
 } // namespace sofa::component::forcefield
