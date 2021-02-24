@@ -121,22 +121,24 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
             triangleVertices.push_back(sofa::defaulttype::Vector3(p[2]));
 
             unsigned int nbPoints=0;
+            unsigned int commonVertex=10,ver1,ver2;
             for(unsigned int i=0;i<3;i++)
             {
                 for(unsigned int j=i+1;j<3;j++)
                 {
                     Coord edgeDirection = p[j]-p[i];
                     double denum;
-                    if((denum=intersectedLine[1]*edgeDirection[0]-intersectedLine[0]*edgeDirection[1])> 0.0001)
+                    if((denum=intersectedLine[1]*edgeDirection[0]-intersectedLine[0]*edgeDirection[1])> 0.00001)
                     {
                         double s = (intersectedLine[0]*p[i][1]-intersectedLine[1]*p[i][0]+intersectedLine[1]*ref[0]-intersectedLine[0]*ref[1])/denum;
                         if(s>=0 && s<=1)
                         {
                             double t = (edgeDirection[0]*s+p[i][0]-ref[0])/intersectedLine[0];
-                            if((t*intersectedLine[2]+ref[2])-(s*edgeDirection[2]+p[i][2]) < 0.0001)
+                            if((t*intersectedLine[2]+ref[2])-(s*edgeDirection[2]+p[i][2]) < 0.001)
                             {
                                 if(nbPoints == 0)
                                 {
+                                    ver1 = i; ver2 = j;
                                     a[0] = intersectedLine[0]*t + ref[0];
                                     a[1] = intersectedLine[1]*t + ref[1];
                                     a[2] = intersectedLine[2]*t + ref[2];
@@ -146,6 +148,8 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
                                     b[0] = intersectedLine[0]*t + ref[0];
                                     b[1] = intersectedLine[1]*t + ref[1];
                                     b[2] = intersectedLine[2]*t + ref[2];
+                                    if(ver1==i || ver1==j)      commonVertex = ver1;
+                                    else if(ver2==i || ver2==j) commonVertex = ver2;
                                 }
                                 nbPoints++;
                             }
@@ -153,34 +157,63 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
                     }                        
                 }
             }
-            lineVertices.push_back(sofa::defaulttype::Vector3(a));
-            lineVertices.push_back(sofa::defaulttype::Vector3(b));
-            isDraw = true;
             dmsg_warning() << "nbPoints: " << nbPoints;
+                lineVertices.push_back(sofa::defaulttype::Vector3(a));
+                lineVertices.push_back(sofa::defaulttype::Vector3(b));
 
-
-            const Triangle t = m_topology->getTriangle(maxStressTriangleID);
-            for(unsigned int i=0;i<3;i++)
+            if(nbPoints > 1)
             {
-                TrianglesAroundVertex triAroundVer = m_topology->getTrianglesAroundVertex(t[i]);
-                for(unsigned int j=0;j<triAroundVer.size();j++)
+                isDraw = true;
+                const Triangle t = m_topology->getTriangle(maxStressTriangleID);
+                for(unsigned int i=0;i<3;i++)
                 {
-                    if(triAroundVer[j] != maxStressTriangleID)
+                    TrianglesAroundVertex triAroundVer = m_topology->getTrianglesAroundVertex(t[i]);
+                    for(unsigned int j=0;j<triAroundVer.size();j++)
                     {
-                        const bool is_tested = false;
-                        unsigned int indTest = 0;
-                        if(triangleGeo->isPointInsideTriangle( triAroundVer[j], is_tested, a, indTest))
+                        if(triAroundVer[j] != maxStressTriangleID)
                         {
-                            dmsg_warning() << "point a is also on triangle " << triAroundVer[j];
+                            const bool is_tested = false;
+                            unsigned int indTest = 0;
+                            if(triangleGeo->isPointInsideTriangle( triAroundVer[j], is_tested, a, indTest))      ind_ta = triAroundVer[j];
+                            else if(triangleGeo->isPointInsideTriangle( triAroundVer[j], is_tested, b, indTest)) ind_tb = triAroundVer[j]; 
                         }
-                        if(triangleGeo->isPointInsideTriangle( triAroundVer[j], is_tested, b, indTest))
-                        {
-                            dmsg_warning() << "point b is also on triangle " << triAroundVer[j];
-                        }
+                        // const bool is_tested = false;
+                        // unsigned int indTest = 0;
+                        // if(triangleGeo->isPointInsideTriangle( triAroundVer[j], is_tested, a, indTest) || 
+                        //             triangleGeo->isPointInsideTriangle( triAroundVer[j], is_tested, b, indTest))
+                        // {
+                        //     bool isSame = false;
+                        //     for(unsigned int k=0;k<removeTriangle.size();k++)
+                        //     {
+                        //         if(triAroundVer[j] == removeTriangle[k])
+                        //         {
+                        //             isSame = true;
+                        //             break;
+                        //         }
+                        //     }
+                        //     if(!isSame)
+                        //     {
+                        //         removeTriangle.push_back(triAroundVer[j]);
+                        //         const Triangle tri = m_topology->getTriangle(triAroundVer[j]);
+                        //         dmsg_warning() << "Triangles:  " << tri;
+                        //         for(unsigned int k=0;k<3;k++)
+                        //         {
+                        //             if(tri[k] != t[0] && tri[k] != t[1] && tri[k] != t[2])
+                        //             {
+                        //                 uncommonPoints[nbUncommon] = tri[k];
+                        //                 nbUncommon++;
+                        //             }
+                        //         }
+                        //     }
+                        // }
                     }
                 }
+                // dmsg_warning() << "Not common points:  " << uncommonPoints[0] << " " << uncommonPoints[1];
+                // if(removeTriangle.size() == 3)
+                // {
+                //     triangleMod->removeItems(removeTriangle);
+                // }
             }
-
             // Vector3 minAABB, maxAABB;
             // const bool is_tested = false;
             // unsigned int indTest = 0;
@@ -242,17 +275,14 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
             sofa::helper::vector<sofa::core::topology::TopologyObjectType> topoPath_list;
             sofa::helper::vector<unsigned int> indices_list;
             sofa::helper::vector<Vec<3, double> > coords2_list;
-            ind_ta = maxStressTriangleID;
-            ind_tb = maxStressTriangleID;
 
-            if(nbPoints == 2)
+            if(false)
             {
                 bool isPathOk = triangleGeo->computeIntersectedObjectsList(
                             a_last, a, b, ind_ta, ind_tb,
                             topoPath_list, indices_list,
                             coords2_list);
 
-                dmsg_warning() << "isPathOk:  " << isPathOk;
                 if(isPathOk)
                 {
                     sofa::helper::vector<unsigned int> new_edges;

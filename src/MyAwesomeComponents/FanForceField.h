@@ -79,12 +79,15 @@ protected:
     sofa::helper::vector<TriangleID> trianglesAroundLastVertex;
     Coord a;
     Coord b;
-    unsigned int ind_ta;
-    unsigned int ind_tb;
+    TriangleID ind_ta;
+    TriangleID ind_tb;
 
     std::vector<sofa::defaulttype::Vector3> lineVertices;
     std::vector<sofa::defaulttype::Vector3> triangleVertices;
     bool isDraw;
+
+    TrianglesAroundVertex triAroundPa;
+    TrianglesAroundVertex triAroundPb;
 public:
     /// Init function
     void init() override;
