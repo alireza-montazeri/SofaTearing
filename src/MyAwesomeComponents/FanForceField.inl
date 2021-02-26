@@ -58,7 +58,7 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
 {
     stepCnt++;
     // dmsg_warning() << "debug: " << m_topology->getTrianglesAroundVertex(100);
-    if(stepCnt%5==0)
+    if(stepCnt%10==0)
     {
         bool isNeighber = true;
         Real maxStressOfAll = 0;
@@ -93,17 +93,6 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
             DataTypes::Coord stressDirection;
             sofa::defaulttype::Vec<3,Real> stressDirectionVec;
             sofa::defaulttype::Vec<3,double> triangleNormal;
-            DataTypes::Coord ref;
-            
-
-            if(firstCut)
-            {
-                ref = triangleGeo->computeTriangleCenter(maxStressTriangleID);
-            }
-            else
-            {
-                ref = b;
-            }
 
             triangleNormal = triangleGeo->computeTriangleNormal(maxStressTriangleID);
             stressDirection  = triangleInfo[maxStressTriangleID].principalStressDirection;
@@ -113,9 +102,6 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
             sofa::defaulttype::Vec<3,Real> intersectedLine = stressDirectionVec.cross(triangleNormal);
             intersectedLine /= sqrt(intersectedLine[0]*intersectedLine[0]+intersectedLine[1]*intersectedLine[1]+intersectedLine[2]*intersectedLine[2]);
 
-            // Coord d = intersectedLine*2.5;
-            // lineVertices.push_back(sofa::defaulttype::Vector3(ref-d));
-            // lineVertices.push_back(sofa::defaulttype::Vector3(ref+d));
             Coord p[3];
             triangleGeo->getTriangleVertexCoordinates(maxStressTriangleID, p);
             triangleVertices.push_back(sofa::defaulttype::Vector3(p[0]));
@@ -142,7 +128,8 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
             lineVertices.push_back(sofa::defaulttype::Vector3(p[ver2]));
             isDraw = true;
 
-            EdgeID inciesEdge;
+            sofa::helper::vector<EdgeID> inciesEdge;
+            inciesEdge.clear();
             Triangle t = m_topology->getTriangle(maxStressTriangleID);
             EdgesInTriangle edges = m_topology->getEdgesInTriangle(maxStressTriangleID);
             for(unsigned int i=0;i<3;i++)
@@ -153,7 +140,37 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
                     if(edge[1] == t[ver1] || edge[1] == t[ver2])
                     {
                         dmsg_warning() << "remove edge: " << edge;
-                        inciesEdge = edges[i];
+                        inciesEdge.push_back(edges[i]);
+
+                        double maxDotProduct=0,dotProduct;
+                        EdgeID secondEdgeId;
+                        for(unsigned int k=0;k<2;k++)
+                        {
+                            EdgesAroundVertex edgesAroundVer = m_topology->getEdgesAroundVertex(edge[k]);
+                            for(unsigned int j=0;j<edgesAroundVer.size();j++)
+                            {
+                                if(edgesAroundVer[j] != edges[0] && edgesAroundVer[j] != edges[1] && edgesAroundVer[j] != edges[2])
+                                {
+                                    Coord edgePointsPos[2];
+                                    triangleGeo->getEdgeVertexCoordinates(edgesAroundVer[j], edgePointsPos);
+                                    Coord edgeDirection = edgePointsPos[1]-edgePointsPos[0];
+                                    edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
+                                    dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
+                                    if(fabs(dotProduct) > maxDotProduct)
+                                    {
+                                        secondEdgeId = edgesAroundVer[j];
+                                        maxDotProduct = fabs(dotProduct);
+                                    }
+                                }
+                            }
+                        }
+                        Coord edgePointsPos[2];
+                        triangleGeo->getEdgeVertexCoordinates(secondEdgeId, edgePointsPos);
+                        lineVertices.push_back(sofa::defaulttype::Vector3(edgePointsPos[0]));
+                        lineVertices.push_back(sofa::defaulttype::Vector3(edgePointsPos[1]));
+
+                        inciesEdge.push_back(secondEdgeId);
+                        break;
                     }
                 }
             }
@@ -161,16 +178,11 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
             sofa::helper::vector<PointID> new_points;
             sofa::helper::vector<PointID> end_points;
             bool reachBorder = false;
-            int newPoints[10];
 
-            int nbPoints = triangleAlg->InciseAlongEdge(inciesEdge, newPoints);
-            dmsg_warning() << "inciesOK: " << end_points;
-            
-            triangleMod->propagateTopologicalChanges();
-            // notify the end for the current sequence of topological change events
-            triangleMod->notifyEndingEvent();
-
-            triangleMod->propagateTopologicalChanges();
+            bool incieseOk = triangleAlg->InciseAlongEdgeList(inciesEdge, new_points, end_points, reachBorder);
+            dmsg_warning() << "inciesOK: " << incieseOk;
+            dmsg_warning() << "end points: " << end_points;
+            dmsg_warning() << "new points: " << new_points;
         }
         else
         {

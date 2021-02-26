@@ -66,6 +66,8 @@ public:
     typedef core::topology::BaseMeshTopology::TrianglesAroundVertex TrianglesAroundVertex;
     typedef sofa::helper::fixed_array<EdgeID,3> EdgesInTriangle;
     typedef sofa::core::topology::BaseMeshTopology::Edge Edge;
+    typedef sofa::helper::vector<EdgeID>			EdgesAroundVertex;
+    
 public:
     Data<Real> d_tearThreshold;
     double tearStep;
