@@ -111,6 +111,8 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
             stressDirectionVec[1] = (Real)(stressDirection[1]); 
             stressDirectionVec[2] = (Real)(stressDirection[2]);            
             sofa::defaulttype::Vec<3,Real> intersectedLine = stressDirectionVec.cross(triangleNormal);
+            intersectedLine /= sqrt(intersectedLine[0]*intersectedLine[0]+intersectedLine[1]*intersectedLine[1]+intersectedLine[2]*intersectedLine[2]);
+
             // Coord d = intersectedLine*2.5;
             // lineVertices.push_back(sofa::defaulttype::Vector3(ref-d));
             // lineVertices.push_back(sofa::defaulttype::Vector3(ref+d));
@@ -120,202 +122,55 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
             triangleVertices.push_back(sofa::defaulttype::Vector3(p[1]));
             triangleVertices.push_back(sofa::defaulttype::Vector3(p[2]));
 
-            unsigned int nbPoints=0;
-            unsigned int commonVertex=10,ver1,ver2;
+            unsigned int ver1,ver2;
+            double maxDotProduct=0,dotProduct;
             for(unsigned int i=0;i<3;i++)
             {
                 for(unsigned int j=i+1;j<3;j++)
                 {
                     Coord edgeDirection = p[j]-p[i];
-                    double denum;
-                    if((denum=intersectedLine[1]*edgeDirection[0]-intersectedLine[0]*edgeDirection[1])> 0.00001)
+                    edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
+                    dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
+                    if(fabs(dotProduct) > maxDotProduct)
                     {
-                        double s = (intersectedLine[0]*p[i][1]-intersectedLine[1]*p[i][0]+intersectedLine[1]*ref[0]-intersectedLine[0]*ref[1])/denum;
-                        if(s>=0 && s<=1)
-                        {
-                            double t = (edgeDirection[0]*s+p[i][0]-ref[0])/intersectedLine[0];
-                            if((t*intersectedLine[2]+ref[2])-(s*edgeDirection[2]+p[i][2]) < 0.001)
-                            {
-                                if(nbPoints == 0)
-                                {
-                                    ver1 = i; ver2 = j;
-                                    a[0] = intersectedLine[0]*t + ref[0];
-                                    a[1] = intersectedLine[1]*t + ref[1];
-                                    a[2] = intersectedLine[2]*t + ref[2];
-                                }
-                                else if(nbPoints == 1)
-                                {
-                                    b[0] = intersectedLine[0]*t + ref[0];
-                                    b[1] = intersectedLine[1]*t + ref[1];
-                                    b[2] = intersectedLine[2]*t + ref[2];
-                                    if(ver1==i || ver1==j)      commonVertex = ver1;
-                                    else if(ver2==i || ver2==j) commonVertex = ver2;
-                                }
-                                nbPoints++;
-                            }
-                        }
-                    }                        
+                        ver1 = i; ver2 = j;
+                        maxDotProduct = fabs(dotProduct);
+                    }                     
                 }
             }
-            dmsg_warning() << "nbPoints: " << nbPoints;
-                lineVertices.push_back(sofa::defaulttype::Vector3(a));
-                lineVertices.push_back(sofa::defaulttype::Vector3(b));
+            lineVertices.push_back(sofa::defaulttype::Vector3(p[ver1]));
+            lineVertices.push_back(sofa::defaulttype::Vector3(p[ver2]));
+            isDraw = true;
 
-            if(nbPoints > 1)
+            EdgeID inciesEdge;
+            Triangle t = m_topology->getTriangle(maxStressTriangleID);
+            EdgesInTriangle edges = m_topology->getEdgesInTriangle(maxStressTriangleID);
+            for(unsigned int i=0;i<3;i++)
             {
-                isDraw = true;
-                const Triangle t = m_topology->getTriangle(maxStressTriangleID);
-                for(unsigned int i=0;i<3;i++)
+                Edge edge = m_topology->getEdge(edges[i]);
+                if(edge[0] == t[ver1] || edge[0] == t[ver2])
                 {
-                    TrianglesAroundVertex triAroundVer = m_topology->getTrianglesAroundVertex(t[i]);
-                    for(unsigned int j=0;j<triAroundVer.size();j++)
+                    if(edge[1] == t[ver1] || edge[1] == t[ver2])
                     {
-                        if(triAroundVer[j] != maxStressTriangleID)
-                        {
-                            const bool is_tested = false;
-                            unsigned int indTest = 0;
-                            if(triangleGeo->isPointInsideTriangle( triAroundVer[j], is_tested, a, indTest))      ind_ta = triAroundVer[j];
-                            else if(triangleGeo->isPointInsideTriangle( triAroundVer[j], is_tested, b, indTest)) ind_tb = triAroundVer[j]; 
-                        }
-                        // const bool is_tested = false;
-                        // unsigned int indTest = 0;
-                        // if(triangleGeo->isPointInsideTriangle( triAroundVer[j], is_tested, a, indTest) || 
-                        //             triangleGeo->isPointInsideTriangle( triAroundVer[j], is_tested, b, indTest))
-                        // {
-                        //     bool isSame = false;
-                        //     for(unsigned int k=0;k<removeTriangle.size();k++)
-                        //     {
-                        //         if(triAroundVer[j] == removeTriangle[k])
-                        //         {
-                        //             isSame = true;
-                        //             break;
-                        //         }
-                        //     }
-                        //     if(!isSame)
-                        //     {
-                        //         removeTriangle.push_back(triAroundVer[j]);
-                        //         const Triangle tri = m_topology->getTriangle(triAroundVer[j]);
-                        //         dmsg_warning() << "Triangles:  " << tri;
-                        //         for(unsigned int k=0;k<3;k++)
-                        //         {
-                        //             if(tri[k] != t[0] && tri[k] != t[1] && tri[k] != t[2])
-                        //             {
-                        //                 uncommonPoints[nbUncommon] = tri[k];
-                        //                 nbUncommon++;
-                        //             }
-                        //         }
-                        //     }
-                        // }
+                        dmsg_warning() << "remove edge: " << edge;
+                        inciesEdge = edges[i];
                     }
                 }
-                // dmsg_warning() << "Not common points:  " << uncommonPoints[0] << " " << uncommonPoints[1];
-                // if(removeTriangle.size() == 3)
-                // {
-                //     triangleMod->removeItems(removeTriangle);
-                // }
             }
-            // Vector3 minAABB, maxAABB;
-            // const bool is_tested = false;
-            // unsigned int indTest = 0;
-            // bool isPointInTriangle = true;
-            // unsigned int cnt = 0;
-            // while(isPointInTriangle)
-            // {
-            //     cnt++;
-            //     b[0] = intersectedLine[0]*cnt*tearStep + a[0];
-            //     b[1] = intersectedLine[1]*cnt*tearStep + a[1];
-            //     b[2] = intersectedLine[2]*cnt*tearStep + a[2];
+            // dmsg_warning() << "remove edge: " << inciesEdge;
+            sofa::helper::vector<PointID> new_points;
+            sofa::helper::vector<PointID> end_points;
+            bool reachBorder = false;
+            int newPoints[10];
 
-            //     isPointInTriangle = triangleGeo->isPointInsideTriangle( ind_ta, is_tested, b, indTest);
-            //     // triangleGeo->computeTriangleAABB(ind_ta, minAABB, maxAABB);
-            //     // for (int j = 0 ; j < 3 ; j++)
-            //     // {
-            //     //     if (b[j] < minAABB[j] || b[j] > maxAABB[j])
-            //     //     {
-            //     //         isPointInTriangle = false;
-            //     //         break;
-            //     //     }
-            //     // }
-            // }
-            // dmsg_warning() << "cnt: " << cnt << msgendl;
-            // std::vector<unsigned int> triIndices;
-            // triIndices.clear();
-            // for ( unsigned int i = 0 ; i < nbTriangle ; i++)
-            // {
-            //     triangleGeo->computeTriangleAABB(i, minAABB, maxAABB);
-            //     bool isBPointInAABB = true;
-            //     bool isAPointInAABB = true;
-            //     for (int j = 0 ; j < 3 ; j++)
-            //     {
-            //         if (b[j] < minAABB[j] || b[j] > maxAABB[j])
-            //         {
-            //             isBPointInAABB = false;
-            //         }
-            //         if (a[j] < minAABB[j] || a[j] > maxAABB[j])
-            //         {
-            //             isAPointInAABB = false;
-            //         }
-            //     }
-
-            //     if (isBPointInAABB)
-            //     {
-            //         ind_tb = i;
-            //         // triIndices.push_back(i);
-            //     }
-            //     if(isAPointInAABB)
-            //     {
-            //         ind_ta = i;
-            //     }
-            // }
+            int nbPoints = triangleAlg->InciseAlongEdge(inciesEdge, newPoints);
+            dmsg_warning() << "inciesOK: " << end_points;
             
-            // dmsg_warning() << "indexB: " << ind_tb  << " indexA: " << ind_ta << msgendl;
-            
-            unsigned int a_last = core::topology::BaseMeshTopology::InvalidID;
-            unsigned int b_last = core::topology::BaseMeshTopology::InvalidID;
-            sofa::helper::vector<sofa::core::topology::TopologyObjectType> topoPath_list;
-            sofa::helper::vector<unsigned int> indices_list;
-            sofa::helper::vector<Vec<3, double> > coords2_list;
+            triangleMod->propagateTopologicalChanges();
+            // notify the end for the current sequence of topological change events
+            triangleMod->notifyEndingEvent();
 
-            if(false)
-            {
-                bool isPathOk = triangleGeo->computeIntersectedObjectsList(
-                            a_last, a, b, ind_ta, ind_tb,
-                            topoPath_list, indices_list,
-                            coords2_list);
-
-                if(isPathOk)
-                {
-                    sofa::helper::vector<unsigned int> new_edges;
-
-                    //Split triangles to create edges along a path given as a the list of existing edges and triangles crossed by it.
-                    triangleAlg->SplitAlongPath(a_last, a, b_last, b,
-                            topoPath_list, indices_list, coords2_list,
-                            new_edges, 0.1, 0.25);
-
-                    sofa::helper::vector<unsigned int> new_points;
-                    sofa::helper::vector<unsigned int> end_points;
-                    bool reachBorder = false;
-
-                    //Duplicates the given edges
-                    triangleAlg->InciseAlongEdgeList(new_edges,
-                            new_points, end_points, reachBorder);
-
-                    if (!end_points.empty())
-                    {
-                        a_last = end_points.back();
-                        // trianglesAroundLastVertex.clear();     
-                        // trianglesAroundLastVertex = m_topology->getTrianglesAroundVertex(a_last);
-                    }
-
-                    // firstCut = false;
-
-                    triangleMod->propagateTopologicalChanges();
-                    // notify the end for the current sequence of topological change events
-                    triangleMod->notifyEndingEvent();
-
-                    triangleMod->propagateTopologicalChanges();
-                }
-            }
+            triangleMod->propagateTopologicalChanges();
         }
         else
         {

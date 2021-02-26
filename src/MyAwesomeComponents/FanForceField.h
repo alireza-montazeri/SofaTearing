@@ -60,8 +60,12 @@ public:
     typedef sofa::component::forcefield::TriangularFEMForceField<defaulttype::Vec3Types>::TriangleInformation triangleInfo;
     typedef typename Coord::value_type   Real;
     typedef core::topology::BaseMeshTopology::TriangleID TriangleID;
+    typedef core::topology::BaseMeshTopology::EdgeID EdgeID;
+    typedef core::topology::BaseMeshTopology::PointID PointID;
     typedef core::topology::BaseMeshTopology::Triangle Triangle;
     typedef core::topology::BaseMeshTopology::TrianglesAroundVertex TrianglesAroundVertex;
+    typedef sofa::helper::fixed_array<EdgeID,3> EdgesInTriangle;
+    typedef sofa::core::topology::BaseMeshTopology::Edge Edge;
 public:
     Data<Real> d_tearThreshold;
     double tearStep;
