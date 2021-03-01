@@ -83,8 +83,17 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
             {
                 if(fabs(triangleInfo[i].maxStress) > maxStressOfAll)
                 {
-                    maxStressOfAll = fabs(triangleInfo[i].maxStress);
-                    maxStressTriangleID = i;                        
+                    EdgesInTriangle edges = m_topology->getEdgesInTriangle(i);
+                    unsigned int nbNeighborTri = 0;
+                    for(unsigned int j=0;j<3;j++)
+                    {
+                        nbNeighborTri += m_topology->getTrianglesAroundEdge(edges[j]).size();
+                    }
+                    if(nbNeighborTri > 4)
+                    {
+                        maxStressOfAll = fabs(triangleInfo[i].maxStress);
+                        maxStressTriangleID = i; 
+                    }                       
                 }
             }
         }
