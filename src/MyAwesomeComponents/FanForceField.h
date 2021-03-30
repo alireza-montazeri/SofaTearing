@@ -82,7 +82,8 @@ protected:
     sofa::component::topology::TriangleSetTopologyAlgorithms<defaulttype::Vec3Types>* triangleAlg;
     sofa::component::topology::TriangleSetGeometryAlgorithms<defaulttype::Vec3Types>* triangleGeo;
 
-    sofa::helper::vector<TriangleID> trianglesAroundLastVertex;
+    sofa::helper::vector<TriangleID> trianglesAroundPointA;
+    sofa::helper::vector<TriangleID> trianglesAroundPointB;
     Coord a;
     Coord b;
     TriangleID ind_ta;

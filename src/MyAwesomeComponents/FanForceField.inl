@@ -66,19 +66,26 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
 
         sofa::helper::vector<triangleInfo> triangleInfo = *(triangleFF->triangleInfo.beginEdit());
 
-        // for(unsigned int i=0;i<trianglesAroundLastVertex.size();i++)
-        // {
-        //     if(fabs(triangleInfo[trianglesAroundLastVertex.at(i)].maxStress) > maxStressOfAll)
-        //     {
-        //         maxStressOfAll = fabs(triangleInfo[trianglesAroundLastVertex.at(i)].maxStress);
-        //         maxStressTriangleID = trianglesAroundLastVertex.at(i);
-        //     }
-        // }
-        
-        size_t nbTriangle = m_topology->getNbTriangles();
-
-        if(maxStressOfAll < d_tearThreshold.getValue())
+        for(unsigned int i=0;i<trianglesAroundPointA.size();i++)
         {
+            if(fabs(triangleInfo[trianglesAroundPointA[i]].maxStress) > maxStressOfAll)
+            {
+                maxStressOfAll = fabs(triangleInfo[trianglesAroundPointA[i]].maxStress);
+                maxStressTriangleID = trianglesAroundPointA[i];
+            }
+        }
+        for(unsigned int i=0;i<trianglesAroundPointB.size();i++)
+        {
+            if(fabs(triangleInfo[trianglesAroundPointB[i]].maxStress) > maxStressOfAll)
+            {
+                maxStressOfAll = fabs(triangleInfo[trianglesAroundPointB[i]].maxStress);
+                maxStressTriangleID = trianglesAroundPointB[i];
+            }
+        }
+
+        if(firstCut)
+        {
+            size_t nbTriangle = m_topology->getNbTriangles();
             for (unsigned int i = 0 ; i < nbTriangle ; ++i)
             {
                 if(fabs(triangleInfo[i].maxStress) > maxStressOfAll)
@@ -200,8 +207,19 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
 
                 bool incieseOk = triangleAlg->InciseAlongEdgeList(inciesEdge, new_points, end_points, reachBorder);
                 dmsg_warning() << "inciesOK: " << incieseOk;
-                // dmsg_warning() << "end points: " << end_points;
-                // dmsg_warning() << "new points: " << new_points;
+                // if (!end_points.empty())
+                // {
+                //     firstCut = false;
+                //     trianglesAroundPointA.clear();     
+                //     trianglesAroundPointA = m_topology->getTrianglesAroundVertex(end_points.back());
+                //     dmsg_warning() << "trianglesAroundPointA: " <<trianglesAroundPointA;
+                //     if(!end_points.empty())
+                //     {
+                //         trianglesAroundPointB.clear();
+                //         trianglesAroundPointB = m_topology->getTrianglesAroundVertex(end_points.back());
+                //         dmsg_warning() << "trianglesAroundPointB: " <<trianglesAroundPointB;
+                //     }
+                // }
             }
         }
         else
