@@ -63,24 +63,47 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
         bool isNeighber = true;
         Real maxStressOfAll = 0;
         TriangleID maxStressTriangleID=0;
+        int pointSide=0;
 
         sofa::helper::vector<triangleInfo> triangleInfo = *(triangleFF->triangleInfo.beginEdit());
 
-        for(unsigned int i=0;i<trianglesAroundPointA.size();i++)
+        trueEdgeAroundPa.clear();
+        trueEdgeAroundPb.clear();
+
+        for(unsigned int i=0;i<edgesAroundPa.size();i++)
         {
-            if(fabs(triangleInfo[trianglesAroundPointA[i]].maxStress) > maxStressOfAll)
+            sofa::helper::vector<TriangleID> tri = m_topology->getTrianglesAroundEdge(edgesAroundPa[i]);
+            if(tri.size()>1)
             {
-                maxStressOfAll = fabs(triangleInfo[trianglesAroundPointA[i]].maxStress);
-                maxStressTriangleID = trianglesAroundPointA[i];
+                for(unsigned int j=0;j<tri.size();j++)
+                {
+                    if(fabs(triangleInfo[tri[j]].maxStress) > maxStressOfAll)
+                    {
+                        maxStressOfAll = fabs(triangleInfo[tri[j]].maxStress);
+                        maxStressTriangleID = tri[j];
+                        pointSide = 1;
+                    }
+                }
             }
+            trueEdgeAroundPa.push_back(edgesAroundPa[i]);
         }
-        for(unsigned int i=0;i<trianglesAroundPointB.size();i++)
+
+        for(unsigned int i=0;i<edgesAroundPb.size();i++)
         {
-            if(fabs(triangleInfo[trianglesAroundPointB[i]].maxStress) > maxStressOfAll)
+            sofa::helper::vector<TriangleID> tri = m_topology->getTrianglesAroundEdge(edgesAroundPb[i]);
+            if(tri.size()>1)
             {
-                maxStressOfAll = fabs(triangleInfo[trianglesAroundPointB[i]].maxStress);
-                maxStressTriangleID = trianglesAroundPointB[i];
+                for(unsigned int j=0;j<tri.size();j++)
+                {
+                    if(fabs(triangleInfo[tri[j]].maxStress) > maxStressOfAll)
+                    {
+                        maxStressOfAll = fabs(triangleInfo[tri[j]].maxStress);
+                        maxStressTriangleID = tri[j];
+                        pointSide = 2;
+                    }
+                }
             }
+            trueEdgeAroundPb.push_back(edgesAroundPb[i]);
         }
 
         if(firstCut)
@@ -91,21 +114,12 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
                 if(fabs(triangleInfo[i].maxStress) > maxStressOfAll)
                 {
                     maxStressOfAll = fabs(triangleInfo[i].maxStress);
-                    maxStressTriangleID = i; 
-                    // EdgesInTriangle edges = m_topology->getEdgesInTriangle(i);
-                    // unsigned int nbNeighborTri = 0;
-                    // for(unsigned int j=0;j<3;j++)
-                    // {
-                    //     nbNeighborTri += m_topology->getTrianglesAroundEdge(edges[j]).size();
-                    // }
-                    // if(nbNeighborTri >= 4)
-                    // {
-                    //     maxStressOfAll = fabs(triangleInfo[i].maxStress);
-                    //     maxStressTriangleID = i; 
-                    // }                       
+                    maxStressTriangleID = i;   
+                    pointSide = 0;                   
                 }
             }
         }
+
         if(maxStressOfAll > d_tearThreshold.getValue())
         {
             DataTypes::Coord stressDirection;
@@ -126,100 +140,190 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
             triangleVertices.push_back(sofa::defaulttype::Vector3(p[1]));
             triangleVertices.push_back(sofa::defaulttype::Vector3(p[2]));
 
-            unsigned int ver1,ver2;
             double maxDotProduct=0,dotProduct;
-            for(unsigned int i=0;i<3;i++)
+            EdgeID firstEdgeId=0, secondEdgeId=0;
+
+            if(pointSide == 1)
             {
-                for(unsigned int j=i+1;j<3;j++)
+                for(unsigned int i=0;i<trueEdgeAroundPa.size();i++)
                 {
-                    Coord edgeDirection = p[j]-p[i];
+                    Coord edgePointsPos[2];
+                    triangleGeo->getEdgeVertexCoordinates(trueEdgeAroundPa[i], edgePointsPos);
+                    Coord edgeDirection = edgePointsPos[1]-edgePointsPos[0];
                     edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
                     dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
                     if(fabs(dotProduct) > maxDotProduct)
                     {
-                        ver1 = i; ver2 = j;
+                        firstEdgeId = trueEdgeAroundPa[i];
                         maxDotProduct = fabs(dotProduct);
-                    }                     
-                }
-            }
-            lineVertices.push_back(sofa::defaulttype::Vector3(p[ver1]));
-            lineVertices.push_back(sofa::defaulttype::Vector3(p[ver2]));
-            isDraw = true;
-
-            sofa::helper::vector<EdgeID> inciesEdge;
-            inciesEdge.clear();
-            Triangle t = m_topology->getTriangle(maxStressTriangleID);
-            EdgesInTriangle edges = m_topology->getEdgesInTriangle(maxStressTriangleID);
-            for(unsigned int i=0;i<3;i++)
-            {
-                Edge edge = m_topology->getEdge(edges[i]);
-                if(edge[0] == t[ver1] || edge[0] == t[ver2])
-                {
-                    if(edge[1] == t[ver1] || edge[1] == t[ver2])
-                    {
-                        if(m_topology->getTrianglesAroundEdge(edges[i]).size()>1)
-                        {
-                            dmsg_warning() << "first edge";
-                            inciesEdge.push_back(edges[i]);
-                        }
-
-                        double maxDotProduct=0,dotProduct;
-                        EdgeID secondEdgeId;
-                        for(unsigned int k=0;k<2;k++)
-                        {
-                            EdgesAroundVertex edgesAroundVer = m_topology->getEdgesAroundVertex(edge[k]);
-                            for(unsigned int j=0;j<edgesAroundVer.size();j++)
-                            {
-                                if(edgesAroundVer[j] != edges[0] && edgesAroundVer[j] != edges[1] && edgesAroundVer[j] != edges[2])
-                                {
-                                    Coord edgePointsPos[2];
-                                    triangleGeo->getEdgeVertexCoordinates(edgesAroundVer[j], edgePointsPos);
-                                    Coord edgeDirection = edgePointsPos[1]-edgePointsPos[0];
-                                    edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
-                                    dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
-                                    if(fabs(dotProduct) > maxDotProduct && m_topology->getTrianglesAroundEdge(edgesAroundVer[j]).size()>1)
-                                    {
-                                        secondEdgeId = edgesAroundVer[j];
-                                        maxDotProduct = fabs(dotProduct);
-                                    }
-                                }
-                            }
-                        }
-
-                        Coord edgePointsPos[2];
-                        triangleGeo->getEdgeVertexCoordinates(secondEdgeId, edgePointsPos);
-                        lineVertices.push_back(sofa::defaulttype::Vector3(edgePointsPos[0]));
-                        lineVertices.push_back(sofa::defaulttype::Vector3(edgePointsPos[1]));
-
-                        inciesEdge.push_back(secondEdgeId);
-                        
-                        dmsg_warning() << "remove edge: " << inciesEdge;
-                        break;
                     }
                 }
             }
-            // dmsg_warning() << "remove edge: " << inciesEdge;
-            if(inciesEdge.size()>1)
+            else if(pointSide == 2)
             {
+                for(unsigned int i=0;i<trueEdgeAroundPb.size();i++)
+                {
+                    Coord edgePointsPos[2];
+                    triangleGeo->getEdgeVertexCoordinates(trueEdgeAroundPb[i], edgePointsPos);
+                    Coord edgeDirection = edgePointsPos[1]-edgePointsPos[0];
+                    edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
+                    dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
+                    if(fabs(dotProduct) > maxDotProduct)
+                    {
+                        firstEdgeId = trueEdgeAroundPb[i];
+                        maxDotProduct = fabs(dotProduct);
+                    }
+                }
+            }
+            else if(pointSide == 0)
+            {
+                unsigned int ver1,ver2;
+
+                for(unsigned int i=0;i<3;i++)
+                {
+                    for(unsigned int j=i+1;j<3;j++)
+                    {
+                        Coord edgeDirection = p[j]-p[i];
+                        edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
+                        dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
+                        if(fabs(dotProduct) > maxDotProduct)
+                        {
+                            ver1 = i; ver2 = j;
+                            maxDotProduct = fabs(dotProduct);
+                        }                     
+                    }
+                }
+
+                Triangle t = m_topology->getTriangle(maxStressTriangleID);
+                EdgesInTriangle edges = m_topology->getEdgesInTriangle(maxStressTriangleID);
+                for(unsigned int i=0;i<3;i++)
+                {
+                    Edge edge = m_topology->getEdge(edges[i]);
+                    if(edge[0] == t[ver1] || edge[0] == t[ver2])
+                    {
+                        if(edge[1] == t[ver1] || edge[1] == t[ver2])
+                        {
+                            firstEdgeId = edges[i];
+                        }
+                    }
+                }
+            }
+
+            maxDotProduct = 0;
+            Edge edge = m_topology->getEdge(firstEdgeId);
+            if(pointSide == 1)
+            {
+                unsigned int p;
+                if(edge[0] == lastPa)       p = edge[1];
+                else if(edge[1] == lastPa)  p = edge[0];
+
+                EdgesAroundVertex edgesAroundVer = m_topology->getEdgesAroundVertex(p);
+                for(unsigned int j=0;j<edgesAroundVer.size();j++)
+                {
+                    if(edgesAroundVer[j] != firstEdgeId)
+                    {
+                        Coord edgePointsPos[2];
+                        triangleGeo->getEdgeVertexCoordinates(edgesAroundVer[j], edgePointsPos);
+                        Coord edgeDirection = edgePointsPos[1]-edgePointsPos[0];
+                        edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
+                        dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
+                        if(fabs(dotProduct) > maxDotProduct && m_topology->getTrianglesAroundEdge(edgesAroundVer[j]).size()>1)
+                        {
+                            secondEdgeId = edgesAroundVer[j];
+                            maxDotProduct = fabs(dotProduct);
+                        }
+                    }
+                }
+            }
+            else if(pointSide == 2)
+            {
+                unsigned int p;
+                if(edge[0] == lastPb)       p = edge[1];
+                else if(edge[1] == lastPb)  p = edge[0];
+
+                EdgesAroundVertex edgesAroundVer = m_topology->getEdgesAroundVertex(p);
+                for(unsigned int j=0;j<edgesAroundVer.size();j++)
+                {
+                    if(edgesAroundVer[j] != firstEdgeId)
+                    {
+                        Coord edgePointsPos[2];
+                        triangleGeo->getEdgeVertexCoordinates(edgesAroundVer[j], edgePointsPos);
+                        Coord edgeDirection = edgePointsPos[1]-edgePointsPos[0];
+                        edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
+                        dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
+                        if(fabs(dotProduct) > maxDotProduct && m_topology->getTrianglesAroundEdge(edgesAroundVer[j]).size()>1)
+                        {
+                            secondEdgeId = edgesAroundVer[j];
+                            maxDotProduct = fabs(dotProduct);
+                        }
+                    }
+                }
+            }
+            else if(pointSide == 0)
+            {
+                EdgesAroundVertex edgesAroundVer = m_topology->getEdgesAroundVertex(edge[0]);
+                for(unsigned int j=0;j<edgesAroundVer.size();j++)
+                {
+                    if(edgesAroundVer[j] != firstEdgeId)
+                    {
+                        Coord edgePointsPos[2];
+                        triangleGeo->getEdgeVertexCoordinates(edgesAroundVer[j], edgePointsPos);
+                        Coord edgeDirection = edgePointsPos[1]-edgePointsPos[0];
+                        edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
+                        dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
+                        if(fabs(dotProduct) > maxDotProduct && m_topology->getTrianglesAroundEdge(edgesAroundVer[j]).size()>1)
+                        {
+                            secondEdgeId = edgesAroundVer[j];
+                            maxDotProduct = fabs(dotProduct);
+                        }
+                    }
+                }
+            }
+
+
+            if(secondEdgeId!=0 && firstEdgeId!=0)
+            {
+                sofa::helper::vector<EdgeID> inciesEdge;
+                inciesEdge.clear();
+
+                inciesEdge.push_back(firstEdgeId);
+                inciesEdge.push_back(secondEdgeId);
+
                 sofa::helper::vector<PointID> new_points;
                 sofa::helper::vector<PointID> end_points;
                 bool reachBorder = false;
 
                 bool incieseOk = triangleAlg->InciseAlongEdgeList(inciesEdge, new_points, end_points, reachBorder);
-                dmsg_warning() << "inciesOK: " << incieseOk;
-                // if (!end_points.empty())
-                // {
-                //     firstCut = false;
-                //     trianglesAroundPointA.clear();     
-                //     trianglesAroundPointA = m_topology->getTrianglesAroundVertex(end_points.back());
-                //     dmsg_warning() << "trianglesAroundPointA: " <<trianglesAroundPointA;
-                //     if(!end_points.empty())
-                //     {
-                //         trianglesAroundPointB.clear();
-                //         trianglesAroundPointB = m_topology->getTrianglesAroundVertex(end_points.back());
-                //         dmsg_warning() << "trianglesAroundPointB: " <<trianglesAroundPointB;
-                //     }
-                // }
+                dmsg_warning() << "end_points " << end_points;   
+
+                if (!end_points.empty())
+                {
+                    firstCut = false;
+                    if(pointSide == 1)
+                    {
+                        edgesAroundPa.clear();
+                        lastPa = end_points.back();
+                        edgesAroundPa = m_topology->getEdgesAroundVertex(lastPa);
+                    }
+                    else if(pointSide == 2)
+                    {
+                        edgesAroundPb.clear();
+                        lastPb = end_points.back();
+                        edgesAroundPb = m_topology->getEdgesAroundVertex(lastPb);
+                    }
+                    else if(pointSide == 0)
+                    {
+                        edgesAroundPa.clear();
+                        lastPa = end_points.back();
+                        edgesAroundPa = m_topology->getEdgesAroundVertex(lastPa);
+                        if(!end_points.empty())
+                        {
+                            edgesAroundPb.clear();
+                            lastPb = end_points.back();
+                            edgesAroundPb = m_topology->getEdgesAroundVertex(lastPb);
+                        }
+                    }
+                }
             }
         }
         else

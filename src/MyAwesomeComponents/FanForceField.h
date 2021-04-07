@@ -95,6 +95,11 @@ protected:
 
     TrianglesAroundVertex triAroundPa;
     TrianglesAroundVertex triAroundPb;
+
+    EdgesAroundVertex edgesAroundPa,trueEdgeAroundPa;
+    EdgesAroundVertex edgesAroundPb,trueEdgeAroundPb;
+
+    unsigned int lastPa,lastPb;
 public:
     /// Init function
     void init() override;
