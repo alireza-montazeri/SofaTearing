@@ -33,7 +33,7 @@
 #include <sofa/simulation/AnimateEndEvent.h>
 #include <SofaBaseTopology/TriangleSetTopologyModifier.h>
 #include <SofaBaseTopology/TriangleSetGeometryAlgorithms.h>
-#include <SofaBaseTopology/TriangleSetTopologyAlgorithms.h>
+// #include <SofaBaseTopology/TriangleSetTopologyAlgorithms.h>
 #include <sofa/helper/ColorMap.h>
 #include <sofa/defaulttype/RGBAColor.h>
 #include <sofa/core/visual/VisualParams.h>
@@ -58,15 +58,17 @@ public:
     typedef core::objectmodel::Data<VecDeriv> DataVecDeriv;
 
     typedef sofa::component::forcefield::TriangularFEMForceField<defaulttype::Vec3Types>::TriangleInformation triangleInfo;
-    typedef typename Coord::value_type   Real;
     typedef core::topology::BaseMeshTopology::TriangleID TriangleID;
     typedef core::topology::BaseMeshTopology::EdgeID EdgeID;
     typedef core::topology::BaseMeshTopology::PointID PointID;
     typedef core::topology::BaseMeshTopology::Triangle Triangle;
     typedef core::topology::BaseMeshTopology::TrianglesAroundVertex TrianglesAroundVertex;
-    typedef sofa::helper::fixed_array<EdgeID,3> EdgesInTriangle;
+    typedef core::topology::BaseMeshTopology::EdgesInTriangle EdgesInTriangle;
+
     typedef sofa::core::topology::BaseMeshTopology::Edge Edge;
-    typedef sofa::helper::vector<EdgeID>			EdgesAroundVertex;
+    typedef sofa::core::topology::BaseMeshTopology::EdgesAroundVertex EdgesAroundVertex;
+
+    typedef typename DataTypes::Real Real;
     
 public:
     Data<Real> d_tearThreshold;
@@ -79,18 +81,18 @@ protected:
     sofa::core::topology::BaseMeshTopology* m_topology;
     sofa::component::forcefield::TriangularFEMForceField<defaulttype::Vec3Types>* triangleFF;
     sofa::component::topology::TriangleSetTopologyModifier* triangleMod;
-    sofa::component::topology::TriangleSetTopologyAlgorithms<defaulttype::Vec3Types>* triangleAlg;
+    // sofa::component::topology::TriangleSetTopologyAlgorithms<defaulttype::Vec3Types>* triangleAlg;
     sofa::component::topology::TriangleSetGeometryAlgorithms<defaulttype::Vec3Types>* triangleGeo;
 
-    sofa::helper::vector<TriangleID> trianglesAroundPointA;
-    sofa::helper::vector<TriangleID> trianglesAroundPointB;
+    core::topology::BaseMeshTopology::TrianglesAroundVertex trianglesAroundPointA;
+    core::topology::BaseMeshTopology::TrianglesAroundVertex trianglesAroundPointB;
     Coord a;
     Coord b;
     TriangleID ind_ta;
     TriangleID ind_tb;
 
-    std::vector<sofa::defaulttype::Vector3> lineVertices;
-    std::vector<sofa::defaulttype::Vector3> triangleVertices;
+    std::vector<type::Vector3> lineVertices;
+    std::vector<type::Vector3> triangleVertices;
     bool isDraw;
 
     TrianglesAroundVertex triAroundPa;
