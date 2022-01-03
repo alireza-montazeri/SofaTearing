@@ -1,8 +1,8 @@
 # SOFA Tearing Plugin
 This plugin is for SOFA to implement the tearing for Triangular Meshes. A tear threshold value is considered in plugin implementation to obtain how much force needs to cause the mesh to tear. The position and orientation of the tear calculate in each step and then mesh topology change and tear take place.<br /><br />
 This plugin is compatible with **SOFA v21.06**.<br />
-You can find documentation and tutorials of how to use SOFA in https://www.sofa-framework.org/.<br />
-
+You can find documentation and tutorials of how to use SOFA in https://www.sofa-framework.org/.<br /><br />
+<img src="https://github.com/alireza-montazeri/SofaTearing/blob/master/example/test.gif" width="400" height="300" />
 
 ## How to compile it?
 There is a video that explains how to compile an external plugin [here](https://youtu.be/46E215871e8).<br /><br />
