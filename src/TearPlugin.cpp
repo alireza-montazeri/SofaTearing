@@ -1,6 +1,6 @@
 /******************************************************************************
-*       SOFA, Simulation Open-Framework Architecture, development version     *
-*                (c) 2006-2017 INRIA, USTL, UJF, CNRS, MGH                    *
+*                 SOFA, Simulation Open-Framework Architecture                *
+*                    (c) 2006 INRIA, USTL, UJF, CNRS, MGH                     *
 *                                                                             *
 * This program is free software; you can redistribute it and/or modify it     *
 * under the terms of the GNU Lesser General Public License as published by    *
@@ -15,61 +15,28 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program. If not, see <http://www.gnu.org/licenses/>.        *
 *******************************************************************************
-* Authors: The SOFA Team and external contributors (see Authors.txt)          *
+* Authors: Alireza Montazeri                                                  *
 *                                                                             *
-* Contact information: contact@sofa-framework.org                             *
+* Contact information: alireza.montazeri9675@gmail.com                        *
 ******************************************************************************/
-#include <MyAwesomeComponents/config.h>
 
-namespace sofa
+#define SOFA_TEARPLUGIN_CPP
+
+#include <TearPlugin.inl>
+#include <sofa/core/ObjectFactory.h>
+
+#include <sofa/defaulttype/VecTypes.h>
+#include <sofa/defaulttype/RigidTypes.h>
+
+namespace sofa::component::forcefield
 {
-namespace component
-{
 
-extern "C" {
+using namespace sofa::defaulttype;
 
-MYAWESOMECOMPONENTS_API
-void initExternalModule()
-{
-    static bool first = true;
-    if (first)
-    {
-        first = false;
-    }
-}
 
-MYAWESOMECOMPONENTS_API
-const char* getModuleName()
-{
-    return "MyAwesomeComponents";
-}
+int TearPluginClass = core::RegisterObject("Tear if stress exceed from a value")
+        .add<TearPlugin<Vec3Types> >(true);
 
-MYAWESOMECOMPONENTS_API
-const char* getModuleVersion()
-{
-    return "1.0";
-}
+template class SOFATEARING_API TearPlugin<Vec3Types>;
 
-MYAWESOMECOMPONENTS_API
-const char* getModuleLicense()
-{
-    return "LGPL";
-}
-
-MYAWESOMECOMPONENTS_API
-const char* getModuleDescription()
-{
-    return "SOFA plugin example";
-}
-
-MYAWESOMECOMPONENTS_API
-const char* getModuleComponentList()
-{
-    // string containing the names of the classes provided by the plugin
-    return "FanForceField";
-}
-
-} // extern "C"
-
-} // namespace component
-} // namespace sofa
+} // namespace sofa::component::forcefield

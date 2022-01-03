@@ -15,16 +15,61 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program. If not, see <http://www.gnu.org/licenses/>.        *
 *******************************************************************************
-* Authors: The SOFA Team and external contributors (see Authors.txt)          *
+* Authors: Alireza Montazeri                                                  *
 *                                                                             *
-* Contact information: contact@sofa-framework.org                             *
+* Contact information: alireza.montazeri9675@gmail.com                        *
 ******************************************************************************/
-#pragma once
+#include <config.h>
 
-#include <sofa/config.h>
+namespace sofa
+{
+namespace component
+{
 
-#ifdef SOFA_BUILD_MYAWESOMECOMPONENTS
-#  define MYAWESOMECOMPONENTS_API SOFA_EXPORT_DYNAMIC_LIBRARY
-#else
-#  define MYAWESOMECOMPONENTS_API SOFA_IMPORT_DYNAMIC_LIBRARY
-#endif
+extern "C" {
+
+SOFATEARING_API
+void initExternalModule()
+{
+    static bool first = true;
+    if (first)
+    {
+        first = false;
+    }
+}
+
+SOFATEARING_API
+const char* getModuleName()
+{
+    return "SofaTearing";
+}
+
+SOFATEARING_API
+const char* getModuleVersion()
+{
+    return "0.1";
+}
+
+SOFATEARING_API
+const char* getModuleLicense()
+{
+    return "LGPL";
+}
+
+SOFATEARING_API
+const char* getModuleDescription()
+{
+    return "SOFA tearing plugin";
+}
+
+SOFATEARING_API
+const char* getModuleComponentList()
+{
+    // string containing the names of the classes provided by the plugin
+    return "Tear";
+}
+
+} // extern "C"
+
+} // namespace component
+} // namespace sofa

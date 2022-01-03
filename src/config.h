@@ -1,6 +1,6 @@
 /******************************************************************************
-*                 SOFA, Simulation Open-Framework Architecture                *
-*                    (c) 2006 INRIA, USTL, UJF, CNRS, MGH                     *
+*       SOFA, Simulation Open-Framework Architecture, development version     *
+*                (c) 2006-2017 INRIA, USTL, UJF, CNRS, MGH                    *
 *                                                                             *
 * This program is free software; you can redistribute it and/or modify it     *
 * under the terms of the GNU Lesser General Public License as published by    *
@@ -15,28 +15,16 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program. If not, see <http://www.gnu.org/licenses/>.        *
 *******************************************************************************
-* Authors: The SOFA Team and external contributors (see Authors.txt)          *
+* Authors: Alireza Montazeri                                                  *
 *                                                                             *
-* Contact information: contact@sofa-framework.org                             *
+* Contact information: alireza.montazeri9675@gmail.com                        *
 ******************************************************************************/
+#pragma once
 
-#define SOFA_COMPONENT_FORCEFIELD_FANFORCEFIELD_CPP
+#include <sofa/config.h>
 
-#include <MyAwesomeComponents/FanForceField.inl>
-#include <sofa/core/ObjectFactory.h>
-
-#include <sofa/defaulttype/VecTypes.h>
-#include <sofa/defaulttype/RigidTypes.h>
-
-namespace sofa::component::forcefield
-{
-
-using namespace sofa::defaulttype;
-
-
-int FanForceFieldClass = core::RegisterObject("Random forces applied to all points")
-        .add< FanForceField<Vec3Types> >(true);
-
-template class MYAWESOMECOMPONENTS_API FanForceField<Vec3Types>;
-
-} // namespace sofa::component::forcefield
+#ifdef SOFA_BUILD_SOFATEARING
+#  define SOFATEARING_API SOFA_EXPORT_DYNAMIC_LIBRARY
+#else
+#  define SOFATEARING_API SOFA_IMPORT_DYNAMIC_LIBRARY
+#endif

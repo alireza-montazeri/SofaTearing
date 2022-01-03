@@ -1,24 +1,23 @@
 cmake_minimum_required(VERSION 3.12)
-project(MyAwesomeComponents VERSION 1.0)
+project(SofaTearing VERSION 0.1)
 
 # SOFA packages containing our dependencies
-find_package(SofaFramework REQUIRED) # Needed to use SofaCore, SofaHelper and SofaDefaultType
-find_package(SofaGeneral REQUIRED) # Needed to use SofaBaseTopology
+find_package(SofaFramework REQUIRED)
+#find_package(SofaGeneral REQUIRED)
+find_package(SofaGui REQUIRED)
 
 # Config files (tell SOFA this is a plugin)
 set(CONFIG_FILES
-    src/MyAwesomeComponents/config.h
-    src/MyAwesomeComponents/initMyAwesomeComponents.cpp
+    src/config.h
+    src/initTearPlugin.cpp
     )
-# Our nice new SOFA Components
+# Components
 set(HEADER_FILES
-    src/MyAwesomeComponents/ExplicitBDFSolver.h
-    src/MyAwesomeComponents/FanForceField.h
-    src/MyAwesomeComponents/FanForceField.inl
+    src/TearPlugin.h
+    src/TearPlugin.inl
     )
 set(SOURCE_FILES
-    src/MyAwesomeComponents/ExplicitBDFSolver.cpp
-    src/MyAwesomeComponents/FanForceField.cpp
+    src/TearPlugin.cpp
     )
 
 # SOFA plugin are basically libraries
@@ -46,7 +45,7 @@ sofa_generate_package(
     TARGETS ${PROJECT_NAME}
     VERSION ${PROJECT_VERSION}
     INCLUDE_SOURCE_DIR "src"
-    INCLUDE_INSTALL_DIR "MyAwesomeComponents"
+    INCLUDE_INSTALL_DIR "SofaTearing"
     RELOCATABLE "plugins"
     )
 

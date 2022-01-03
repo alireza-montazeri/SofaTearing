@@ -15,14 +15,14 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program. If not, see <http://www.gnu.org/licenses/>.        *
 *******************************************************************************
-* Authors: The SOFA Team and external contributors (see Authors.txt)          *
+* Authors: Alireza Montazeri                                                  *
 *                                                                             *
-* Contact information: contact@sofa-framework.org                             *
+* Contact information: alireza.montazeri9675@gmail.com                        *
 ******************************************************************************/
-#ifndef SOFA_COMPONENT_FORCEFIELD_FANFORCEFIELD_H
-#define SOFA_COMPONENT_FORCEFIELD_FANFORCEFIELD_H
+#ifndef SOFA_TEARPLUGIN_H
+#define SOFA_TEARPLUGIN_H
 
-#include <MyAwesomeComponents/config.h>
+#include <config.h>
 
 #include <sofa/core/behavior/ForceField.h>
 #include <sofa/helper/RandomGenerator.h>
@@ -45,10 +45,10 @@ namespace sofa::component::forcefield
 {
 
 template<class DataTypes>
-class FanForceField : public core::behavior::ForceField<DataTypes>
+class TearPlugin : public core::behavior::ForceField<DataTypes>
 {
 public:
-    SOFA_CLASS(SOFA_TEMPLATE(FanForceField, DataTypes), SOFA_TEMPLATE(core::behavior::ForceField, DataTypes));
+    SOFA_CLASS(SOFA_TEMPLATE(TearPlugin, DataTypes), SOFA_TEMPLATE(core::behavior::ForceField, DataTypes));
 
     typedef core::behavior::ForceField<DataTypes> Inherit;
     typedef typename DataTypes::Deriv Deriv;
@@ -76,7 +76,7 @@ public:
 
 protected:    
     /// Component constructor
-    FanForceField();
+    TearPlugin();
     /// Pointer to the current topology
     sofa::core::topology::BaseMeshTopology* m_topology;
     sofa::component::forcefield::TriangularFEMForceField<defaulttype::Vec3Types>* triangleFF;
@@ -122,8 +122,8 @@ protected:
 
 } // namespace sofa::component::forcefield
 
-#ifndef SOFA_COMPONENT_FORCEFIELD_FANFORCEFIELD_CPP
-extern template class MYAWESOMECOMPONENTS_API FanForceField<defaulttype::Vec3Types>;
+#ifndef SOFA_TEARPLUGIN_CPP
+extern template class SOFATEARING_API TearPlugin<defaulttype::Vec3Types>;
 #endif
 
-#endif // SOFA_COMPONENT_FORCEFIELD_FANFORCEFIELD_H
+#endif // SOFA_TEARPLUGIN_H

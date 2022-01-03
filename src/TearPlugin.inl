@@ -15,20 +15,20 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program. If not, see <http://www.gnu.org/licenses/>.        *
 *******************************************************************************
-* Authors: The SOFA Team and external contributors (see Authors.txt)          *
+* Authors: Alireza Montazeri                                                  *
 *                                                                             *
-* Contact information: contact@sofa-framework.org                             *
+* Contact information: alireza.montazeri9675@gmail.com                        *
 ******************************************************************************/
-#ifndef SOFA_COMPONENT_FORCEFIELD_FANFORCEFIELD_INL
-#define SOFA_COMPONENT_FORCEFIELD_FANFORCEFIELD_INL
+#ifndef SOFA_TEARPLUGIN_INL
+#define SOFA_TEARPLUGIN_INL
 
-#include <MyAwesomeComponents/FanForceField.h>
+#include <TearPlugin.h>
 
 namespace sofa::component::forcefield
 {
 
 template<class DataTypes>
-FanForceField<DataTypes>::FanForceField()
+TearPlugin<DataTypes>::TearPlugin()
     : d_tearThreshold(initData(&d_tearThreshold, "tearThreshold", ""))
 {
     // Nothing more is done here
@@ -36,7 +36,7 @@ FanForceField<DataTypes>::FanForceField()
 
 
 template<class DataTypes>
-void FanForceField<DataTypes>::init()
+void TearPlugin<DataTypes>::init()
 {
     m_topology = this->getContext()->getMeshTopology(); // get the mesh topology to access to the points
     m_topology->getContext()->get(triangleFF);
@@ -54,7 +54,7 @@ void FanForceField<DataTypes>::init()
 
 
 template<class DataTypes>
-void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/, DataVecDeriv& currentForce, const DataVecCoord& /*currentPosition*/, const DataVecDeriv& /*currentVelocities*/)
+void TearPlugin<DataTypes>::addForce(const core::MechanicalParams* /*params*/, DataVecDeriv& currentForce, const DataVecCoord& /*currentPosition*/, const DataVecDeriv& /*currentVelocities*/)
 {
     stepCnt++;
     // dmsg_warning() << "debug: " << m_topology->getTrianglesAroundVertex(100);
@@ -334,7 +334,7 @@ void FanForceField<DataTypes>::addForce(const core::MechanicalParams* /*params*/
 }
 
 template<class DataTypes>
-void FanForceField<DataTypes>::draw(const core::visual::VisualParams* vparams)
+void TearPlugin<DataTypes>::draw(const core::visual::VisualParams* vparams)
 {
     // if(isDraw)
     // {
@@ -351,7 +351,7 @@ void FanForceField<DataTypes>::draw(const core::visual::VisualParams* vparams)
 
 } // namespace sofa::component::forcefield
 
-#endif // SOFA_COMPONENT_FORCEFIELD_FANFORCEFIELD_INL
+#endif // SOFA_TEARPLUGIN_INL
 
 
 

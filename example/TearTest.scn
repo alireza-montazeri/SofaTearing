@@ -1,0 +1,75 @@
+<Node animate="0" gravity="0 -10 0" dt="0.02">
+    <RequiredPlugin name="SofaOpenglVisual"/>
+    <RequiredPlugin name="SofaBoundaryCondition"/>
+    <RequiredPlugin name="SofaConstraint"/>
+    <RequiredPlugin name="SofaGeneralDeformable"/>
+    <RequiredPlugin name="SofaImplicitOdeSolver"/>
+    <RequiredPlugin name="SofaLoader"/> 
+    <RequiredPlugin name="SofaMeshCollision"/> 
+    <RequiredPlugin name="SofaMiscFem"/> 
+    <RequiredPlugin name="SofaRigid"/> 
+    <RequiredPlugin name="SofaEngine"/> 
+
+    <RequiredPlugin name="SofaTearing" />
+
+    <DefaultPipeline verbose="0" />
+    <BruteForceBroadPhase/>
+    <BVHNarrowPhase/>
+    <DefaultContactManager response="default" />
+    <MinProximityIntersection name="Proximity" alarmDistance="0.5" contactDistance="0.1" />
+
+  <Node name="Grab">
+    <EulerImplicitSolver name="cg_odesolver" printLog="false"  rayleighStiffness="0.1" rayleighMass="0.1" />
+    <CGLinearSolver iterations="15" name="linear solver" tolerance="1.0e-9" threshold="1.0e-9" />
+    <MechanicalObject name="ms1" template="Rigid3d" />
+    <LinearMovementConstraint name="keyframes" keyTimes="0 1 5 6" movements="20 60 50 0 0 0    20 49 50 0 0 0    20 50 110 0 0 0     20 80 110 0 0 0" showMovement="1" />
+
+    <Node name="GrabSurfaceR">
+      <MeshObjLoader name="loaderPince" filename="./data/pince_cm_right_cut.obj" triangulate="1" />
+      <MeshTopology src="@loaderPince" />
+      <MechanicalObject name="vertices" src="@loaderPince" rx="-10" scale="0.8"/>
+      <TriangleCollisionModel group="1" simulated="0" moving="1" />
+      <LineCollisionModel group="1" simulated="0" moving="1" />
+      <PointCollisionModel group="1" simulated="0" moving="1" />
+      <RigidMapping index="0" />
+    </Node>
+    <Node name="GrabVisualL">
+      <OglModel name="vm" filename="./data/pince_left.obj" rotation="-10 0 0" scale="0.8"/>
+      <RigidMapping index="0" />
+    </Node>
+  </Node>
+
+  <Node name="SquareGravity">
+    <EulerImplicitSolver name="cg_odesolver" printLog="false"  rayleighStiffness="0.1" rayleighMass="0.1" />
+    <CGLinearSolver iterations="15" name="linear solver" tolerance="1.0e-9" threshold="1.0e-9" />
+    <MeshGmshLoader name="meshLoader" filename="mesh/square3.msh" scale="100" createSubelements="true"/>
+    <include href="Objects/TriangleSetTopology.xml" src="@meshLoader" />
+    <MechanicalObject rx="90" dx="-25" dy="48" dz="0"/>
+    <DiagonalMass massDensity="0.5" />
+    <TriangularFEMForceField name="FEM" youngModulus="6000" poissonRatio="0.35" method="large" showStressValue="false" showStressVector="false" showFracturableTriangles="true" hosfordExponant="10.0" criteriaValue="10000" computePrincipalStress="true"/>
+    <PrecomputedConstraintCorrection recompute="false" />
+
+    <BoxROI template="Vec3d" name="box_roi1" box="-25 45 -2 75 50 2" drawBoxes="1"/>
+    <FixedConstraint template="Vec3d" name="fixedConstraint1" indices="@box_roi1.indices"/>
+    <BoxROI template="Vec3d" name="box_roi2" box="-25 45 98 75 50 102" drawBoxes="1"/>
+    <FixedConstraint template="Vec3d" name="fixedConstraint2" indices="@box_roi2.indices"/>
+
+    <TriangleCollisionModel name="cmTriangles" contactStiffness="1000" />
+    <LineCollisionModel name="cmLines" contactStiffness="1000" />
+    <PointCollisionModel name="cmPoints" contactStiffness="1000" />
+
+    <PlaneForceField normal="0 1 0" d="48" stiffness="1000" showPlane="1" showPlaneSize="20"/>
+    <Node name="VM">
+        <OglModel name="Visual" material="Default Diffuse 1 1 1 1 0.5 Ambient 1 0 0 0 1 Specular 0 1 0 0 1 Emissive 0 1 0 0 1 Shininess 0 45" />
+        <IdentityMapping />
+    </Node>
+    <BruteForceBroadPhase/>
+    <BVHNarrowPhase/>
+
+    <TearPlugin name="Tear" tearThreshold="800.0" /> 
+  </Node>
+
+  <Node name="Floor">
+    <OglModel name="FloorV" filename="mesh/floor.obj" scale="10" dy="-100"  material="Default Diffuse 1 0.8 0.5 0.5 1 Ambient 1 0 0 0 1 Specular 0 1 0 0 1 Emissive 0 1 0 0 1 Shininess 0 45" />
+  </Node>
+</Node>
