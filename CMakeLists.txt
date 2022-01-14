@@ -3,7 +3,6 @@ project(SofaTearing VERSION 0.1)
 
 # SOFA packages containing our dependencies
 find_package(SofaFramework REQUIRED)
-#find_package(SofaGeneral REQUIRED)
 find_package(SofaGui REQUIRED)
 
 # Config files (tell SOFA this is a plugin)
@@ -33,17 +32,14 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     )
 
 # nested-namespace-definition requires compiler flag '/std:c++17'
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
-    )
+set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION})
 
 # Create package Config, Version & Target files.
 # Deploy the headers, resources, scenes & examples.
-sofa_generate_package(
-    NAME ${PROJECT_NAME}
-    TARGETS ${PROJECT_NAME}
-    VERSION ${PROJECT_VERSION}
+sofa_create_package_with_targets(
+    PACKAGE_NAME ${PROJECT_NAME}
+    TARGETS ${PROJECT_NAME} AUTO_SET_TARGET_PROPERTIES
+    PACKAGE_VERSION ${PROJECT_VERSION}
     INCLUDE_SOURCE_DIR "src"
     INCLUDE_INSTALL_DIR "SofaTearing"
     RELOCATABLE "plugins"
