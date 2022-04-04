@@ -30,6 +30,7 @@ namespace sofa::component::forcefield
 template<class DataTypes>
 TearPlugin<DataTypes>::TearPlugin()
     : d_tearThreshold(initData(&d_tearThreshold, "tearThreshold", ""))
+    , d_draw(initData(&d_draw, false, "draw", "draw"))
 {
     // Nothing more is done here
 }
@@ -48,7 +49,7 @@ void TearPlugin<DataTypes>::init()
     stepCnt=0;
     tearStep=0.00001;
     
-    isDraw = false;
+    shouldDraw = false;
     Inherit::init(); // call parent class init
 }
 
@@ -69,6 +70,9 @@ void TearPlugin<DataTypes>::addForce(const core::MechanicalParams* /*params*/, D
 
         trueEdgeAroundPa.clear();
         trueEdgeAroundPb.clear();
+
+        lineVertices.clear();
+        triangleVertices.clear();
 
         for(unsigned int i=0;i<edgesAroundPa.size();i++)
         {
@@ -132,7 +136,7 @@ void TearPlugin<DataTypes>::addForce(const core::MechanicalParams* /*params*/, D
             stressDirectionVec[1] = (Real)(stressDirection[1]); 
             stressDirectionVec[2] = (Real)(stressDirection[2]);            
             sofa::type::Vec<3,Real> intersectedLine = stressDirectionVec.cross(triangleNormal);
-            intersectedLine /= sqrt(intersectedLine[0]*intersectedLine[0]+intersectedLine[1]*intersectedLine[1]+intersectedLine[2]*intersectedLine[2]);
+            intersectedLine = intersectedLine.normalized();
 
             Coord p[3];
             triangleGeo->getTriangleVertexCoordinates(maxStressTriangleID, p);
@@ -142,20 +146,29 @@ void TearPlugin<DataTypes>::addForce(const core::MechanicalParams* /*params*/, D
 
             double maxDotProduct=0,dotProduct;
             EdgeID firstEdgeId=0, secondEdgeId=0;
+            sofa::type::Vec<3, Real> edgeDirectionVec;
 
             if(pointSide == 1)
             {
                 for(unsigned int i=0;i<trueEdgeAroundPa.size();i++)
                 {
-                    Coord edgePointsPos[2];
-                    triangleGeo->getEdgeVertexCoordinates(trueEdgeAroundPa[i], edgePointsPos);
-                    Coord edgeDirection = edgePointsPos[1]-edgePointsPos[0];
-                    edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
-                    dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
-                    if(fabs(dotProduct) > maxDotProduct)
+                    if (m_topology->getTrianglesAroundEdge(trueEdgeAroundPa[i]).size() > 1)
                     {
-                        firstEdgeId = trueEdgeAroundPa[i];
-                        maxDotProduct = fabs(dotProduct);
+                        Coord edgePointsPos[2];
+                        triangleGeo->getEdgeVertexCoordinates(trueEdgeAroundPa[i], edgePointsPos);
+                        Coord edgeDirection = edgePointsPos[1] - edgePointsPos[0];
+
+                        edgeDirectionVec[0] = (Real)(edgeDirection[0]);
+                        edgeDirectionVec[1] = (Real)(edgeDirection[1]);
+                        edgeDirectionVec[2] = (Real)(edgeDirection[2]);
+                        edgeDirectionVec = edgeDirectionVec.normalized();
+                        dotProduct = edgeDirectionVec * intersectedLine;
+
+                        if (fabs(dotProduct) > maxDotProduct)
+                        {
+                            firstEdgeId = trueEdgeAroundPa[i];
+                            maxDotProduct = fabs(dotProduct);
+                        }
                     }
                 }
             }
@@ -163,15 +176,23 @@ void TearPlugin<DataTypes>::addForce(const core::MechanicalParams* /*params*/, D
             {
                 for(unsigned int i=0;i<trueEdgeAroundPb.size();i++)
                 {
-                    Coord edgePointsPos[2];
-                    triangleGeo->getEdgeVertexCoordinates(trueEdgeAroundPb[i], edgePointsPos);
-                    Coord edgeDirection = edgePointsPos[1]-edgePointsPos[0];
-                    edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
-                    dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
-                    if(fabs(dotProduct) > maxDotProduct)
+                    if (m_topology->getTrianglesAroundEdge(trueEdgeAroundPb[i]).size() > 1)
                     {
-                        firstEdgeId = trueEdgeAroundPb[i];
-                        maxDotProduct = fabs(dotProduct);
+                        Coord edgePointsPos[2];
+                        triangleGeo->getEdgeVertexCoordinates(trueEdgeAroundPb[i], edgePointsPos);
+                        Coord edgeDirection = edgePointsPos[1] - edgePointsPos[0];
+
+                        edgeDirectionVec[0] = (Real)(edgeDirection[0]);
+                        edgeDirectionVec[1] = (Real)(edgeDirection[1]);
+                        edgeDirectionVec[2] = (Real)(edgeDirection[2]);
+                        edgeDirectionVec = edgeDirectionVec.normalized();
+                        dotProduct = edgeDirectionVec * intersectedLine;
+
+                        if (fabs(dotProduct) > maxDotProduct)
+                        {
+                            firstEdgeId = trueEdgeAroundPb[i];
+                            maxDotProduct = fabs(dotProduct);
+                        }
                     }
                 }
             }
@@ -184,8 +205,12 @@ void TearPlugin<DataTypes>::addForce(const core::MechanicalParams* /*params*/, D
                     for(unsigned int j=i+1;j<3;j++)
                     {
                         Coord edgeDirection = p[j]-p[i];
-                        edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
-                        dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
+                        edgeDirectionVec[0] = (Real)(edgeDirection[0]);
+                        edgeDirectionVec[1] = (Real)(edgeDirection[1]);
+                        edgeDirectionVec[2] = (Real)(edgeDirection[2]);
+                        edgeDirectionVec = edgeDirectionVec.normalized();
+                        dotProduct = edgeDirectionVec * intersectedLine;
+
                         if(fabs(dotProduct) > maxDotProduct)
                         {
                             ver1 = i; ver2 = j;
@@ -220,14 +245,18 @@ void TearPlugin<DataTypes>::addForce(const core::MechanicalParams* /*params*/, D
                 EdgesAroundVertex edgesAroundVer = m_topology->getEdgesAroundVertex(p);
                 for(unsigned int j=0;j<edgesAroundVer.size();j++)
                 {
-                    if(edgesAroundVer[j] != firstEdgeId)
+                    if(edgesAroundVer[j] != firstEdgeId && m_topology->getTrianglesAroundEdge(edgesAroundVer[j]).size() > 1)
                     {
                         Coord edgePointsPos[2];
                         triangleGeo->getEdgeVertexCoordinates(edgesAroundVer[j], edgePointsPos);
                         Coord edgeDirection = edgePointsPos[1]-edgePointsPos[0];
-                        edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
-                        dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
-                        if(fabs(dotProduct) > maxDotProduct && m_topology->getTrianglesAroundEdge(edgesAroundVer[j]).size()>1)
+                        edgeDirectionVec[0] = (Real)(edgeDirection[0]);
+                        edgeDirectionVec[1] = (Real)(edgeDirection[1]);
+                        edgeDirectionVec[2] = (Real)(edgeDirection[2]);
+                        edgeDirectionVec = edgeDirectionVec.normalized();
+                        dotProduct = edgeDirectionVec * intersectedLine;
+
+                        if(fabs(dotProduct) > maxDotProduct)
                         {
                             secondEdgeId = edgesAroundVer[j];
                             maxDotProduct = fabs(dotProduct);
@@ -244,14 +273,18 @@ void TearPlugin<DataTypes>::addForce(const core::MechanicalParams* /*params*/, D
                 EdgesAroundVertex edgesAroundVer = m_topology->getEdgesAroundVertex(p);
                 for(unsigned int j=0;j<edgesAroundVer.size();j++)
                 {
-                    if(edgesAroundVer[j] != firstEdgeId)
+                    if(edgesAroundVer[j] != firstEdgeId && m_topology->getTrianglesAroundEdge(edgesAroundVer[j]).size() > 1)
                     {
                         Coord edgePointsPos[2];
                         triangleGeo->getEdgeVertexCoordinates(edgesAroundVer[j], edgePointsPos);
                         Coord edgeDirection = edgePointsPos[1]-edgePointsPos[0];
-                        edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
-                        dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
-                        if(fabs(dotProduct) > maxDotProduct && m_topology->getTrianglesAroundEdge(edgesAroundVer[j]).size()>1)
+                        edgeDirectionVec[0] = (Real)(edgeDirection[0]);
+                        edgeDirectionVec[1] = (Real)(edgeDirection[1]);
+                        edgeDirectionVec[2] = (Real)(edgeDirection[2]);
+                        edgeDirectionVec = edgeDirectionVec.normalized();
+                        dotProduct = edgeDirectionVec * intersectedLine; 
+                        
+                        if(fabs(dotProduct) > maxDotProduct)
                         {
                             secondEdgeId = edgesAroundVer[j];
                             maxDotProduct = fabs(dotProduct);
@@ -264,14 +297,18 @@ void TearPlugin<DataTypes>::addForce(const core::MechanicalParams* /*params*/, D
                 EdgesAroundVertex edgesAroundVer = m_topology->getEdgesAroundVertex(edge[0]);
                 for(unsigned int j=0;j<edgesAroundVer.size();j++)
                 {
-                    if(edgesAroundVer[j] != firstEdgeId)
+                    if(edgesAroundVer[j] != firstEdgeId && m_topology->getTrianglesAroundEdge(edgesAroundVer[j]).size() > 1)
                     {
                         Coord edgePointsPos[2];
                         triangleGeo->getEdgeVertexCoordinates(edgesAroundVer[j], edgePointsPos);
                         Coord edgeDirection = edgePointsPos[1]-edgePointsPos[0];
-                        edgeDirection /= sqrt(edgeDirection[0]*edgeDirection[0]+edgeDirection[1]*edgeDirection[1]+edgeDirection[2]*edgeDirection[2]);
-                        dotProduct = edgeDirection[0]*intersectedLine[0] + edgeDirection[1]*intersectedLine[1] + edgeDirection[2]*intersectedLine[2];
-                        if(fabs(dotProduct) > maxDotProduct && m_topology->getTrianglesAroundEdge(edgesAroundVer[j]).size()>1)
+                        edgeDirectionVec[0] = (Real)(edgeDirection[0]);
+                        edgeDirectionVec[1] = (Real)(edgeDirection[1]);
+                        edgeDirectionVec[2] = (Real)(edgeDirection[2]);
+                        edgeDirectionVec = edgeDirectionVec.normalized();
+                        dotProduct = edgeDirectionVec * intersectedLine;
+                        
+                        if(fabs(dotProduct) > maxDotProduct)
                         {
                             secondEdgeId = edgesAroundVer[j];
                             maxDotProduct = fabs(dotProduct);
@@ -333,19 +370,20 @@ void TearPlugin<DataTypes>::addForce(const core::MechanicalParams* /*params*/, D
     }
 }
 
+// draw for standard types (i.e Vec<1,2,3>)
 template<class DataTypes>
 void TearPlugin<DataTypes>::draw(const core::visual::VisualParams* vparams)
 {
-    // if(isDraw)
-    // {
-    //     sofa::defaulttype::RGBAColor color = sofa::defaulttype::RGBAColor(1,0,0,1);
-    //     vparams->drawTool()->drawLines(lineVertices,3,color);
-    //     color = sofa::defaulttype::RGBAColor(0,0,1,1);
-    //     vparams->drawTool()->drawTriangles(triangleVertices,color);
-    //     lineVertices.clear();
-    //     triangleVertices.clear();
-    //     isDraw = false;
-    // }
+     if(d_draw.getValue())
+     {
+         sofa::type::RGBAColor color = sofa::type::RGBAColor(1,0,0,1);
+         vparams->drawTool()->drawLines(lineVertices, 5, color);
+         color = sofa::type::RGBAColor(0,0,1,1);
+         vparams->drawTool()->drawTriangles(triangleVertices, color);
+         //lineVertices.clear();
+         //triangleVertices.clear();
+         shouldDraw = false;
+     }
 }
 
 

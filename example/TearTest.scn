@@ -47,7 +47,7 @@
     <MechanicalObject rx="90" dx="-25" dy="48" dz="0"/>
     <DiagonalMass massDensity="0.5" />
     <TriangularFEMForceField name="FEM" youngModulus="6000" poissonRatio="0.35" method="large" showStressValue="false" showStressVector="false" showFracturableTriangles="true" hosfordExponant="10.0" criteriaValue="10000" computePrincipalStress="true"/>
-    <PrecomputedConstraintCorrection recompute="false" />
+    <!-- <PrecomputedConstraintCorrection recompute="false" /> -->
 
     <BoxROI template="Vec3d" name="box_roi1" box="-25 45 -2 75 50 2" drawBoxes="1"/>
     <FixedConstraint template="Vec3d" name="fixedConstraint1" indices="@box_roi1.indices"/>

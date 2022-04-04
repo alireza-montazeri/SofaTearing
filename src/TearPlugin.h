@@ -35,7 +35,7 @@
 #include <SofaBaseTopology/TriangleSetGeometryAlgorithms.h>
 // #include <SofaBaseTopology/TriangleSetTopologyAlgorithms.h>
 #include <sofa/helper/ColorMap.h>
-#include <sofa/defaulttype/RGBAColor.h>
+#include <sofa/type/RGBAColor.h>
 #include <sofa/core/visual/VisualParams.h>
 
 #include <sofa/helper/map.h>
@@ -72,6 +72,7 @@ public:
     
 public:
     Data<Real> d_tearThreshold;
+    Data<bool> d_draw;
     double tearStep;
 
 protected:    
@@ -93,7 +94,7 @@ protected:
 
     std::vector<type::Vector3> lineVertices;
     std::vector<type::Vector3> triangleVertices;
-    bool isDraw;
+    bool shouldDraw;
 
     TrianglesAroundVertex triAroundPa;
     TrianglesAroundVertex triAroundPb;
