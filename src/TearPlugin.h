@@ -82,7 +82,6 @@ protected:
     sofa::core::topology::BaseMeshTopology* m_topology;
     sofa::component::forcefield::TriangularFEMForceField<defaulttype::Vec3Types>* triangleFF;
     sofa::component::topology::TriangleSetTopologyModifier* triangleMod;
-    // sofa::component::topology::TriangleSetTopologyAlgorithms<defaulttype::Vec3Types>* triangleAlg;
     sofa::component::topology::TriangleSetGeometryAlgorithms<defaulttype::Vec3Types>* triangleGeo;
 
     core::topology::BaseMeshTopology::TrianglesAroundVertex trianglesAroundPointA;
@@ -92,6 +91,7 @@ protected:
     TriangleID ind_ta;
     TriangleID ind_tb;
 
+    std::vector<type::Vector3> pointVertices;
     std::vector<type::Vector3> lineVertices;
     std::vector<type::Vector3> triangleVertices;
     bool shouldDraw;
