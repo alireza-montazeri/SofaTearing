@@ -44,6 +44,8 @@ void TearPlugin<DataTypes>::init()
     m_topology->getContext()->get(triangleMod);
     m_topology->getContext()->get(triangleGeo);
 
+    
+
     firstCut = true;
     stepCnt=0;
     tearStep=0.00001;
@@ -57,36 +59,75 @@ template<class DataTypes>
 void TearPlugin<DataTypes>::addForce(const core::MechanicalParams* /*params*/, DataVecDeriv& currentForce, const DataVecCoord& /*currentPosition*/, const DataVecDeriv& /*currentVelocities*/)
 {
     stepCnt++;
-    // dmsg_warning() << "debug: " << m_topology->getTrianglesAroundVertex(100);
-    if(stepCnt%100==0)
+    if(stepCnt%10==0 && !reachEnd)
     {
+        /*if (reachEnd)
+        {
+            firstCut = true;
+            trueEdgeAroundPa.clear();
+            trueEdgeAroundPb.clear();
+        }*/
+
         Real maxStressOfAll = 0;
         TriangleID maxStressTriangleID=0;
         int pointSide=0;
 
         std::vector<triangleInfo> triangleInfo = *(triangleFF->triangleInfo.beginEdit());
 
-        trueEdgeAroundPa.clear();
-        trueEdgeAroundPb.clear();
-
         //pointVertices.clear();
         //lineVertices.clear();
         //triangleVertices.clear();
-
-        size_t nbTriangle = m_topology->getNbTriangles();
-        for (unsigned int i = 0; i < nbTriangle; ++i)
+        for (unsigned int i = 0; i < trueEdgeAroundPa.size(); i++)
         {
-            if (fabs(triangleInfo[i].maxStress) > maxStressOfAll)
+            std::vector<TriangleID> tri = m_topology->getTrianglesAroundEdge(trueEdgeAroundPa[i]);
+            if (tri.size() > 1)
             {
-                maxStressOfAll = fabs(triangleInfo[i].maxStress);
-                maxStressTriangleID = i;
-                pointSide = 0;
+                for (unsigned int j = 0; j < tri.size(); j++)
+                {
+                    if (fabs(triangleInfo[tri[j]].maxStress) > maxStressOfAll)
+                    {
+                        maxStressOfAll = fabs(triangleInfo[tri[j]].maxStress);
+                        maxStressTriangleID = tri[j];
+                        pointSide = 1;
+                    }
+                }
             }
         }
 
-        if (maxStressOfAll > d_tearThreshold.getValue() && firstCut)
+        for (unsigned int i = 0; i < trueEdgeAroundPb.size(); i++)
         {
-            //firstCut = false;
+            std::vector<TriangleID> tri = m_topology->getTrianglesAroundEdge(trueEdgeAroundPb[i]);
+            if (tri.size() > 1)
+            {
+                for (unsigned int j = 0; j < tri.size(); j++)
+                {
+                    if (fabs(triangleInfo[tri[j]].maxStress) > maxStressOfAll)
+                    {
+                        maxStressOfAll = fabs(triangleInfo[tri[j]].maxStress);
+                        maxStressTriangleID = tri[j];
+                        pointSide = 2;
+                    }
+                }
+            }
+        }
+
+        if (firstCut)
+        {
+            size_t nbTriangle = m_topology->getNbTriangles();
+            for (unsigned int i = 0; i < nbTriangle; ++i)
+            {
+                if (fabs(triangleInfo[i].maxStress) > maxStressOfAll)
+                {
+                    maxStressOfAll = fabs(triangleInfo[i].maxStress);
+                    maxStressTriangleID = i;
+                    pointSide = 0;
+                }
+            }
+        }
+
+        if (maxStressOfAll > d_tearThreshold.getValue())
+        {
+            firstCut = false;
             DataTypes::Coord stressDirection;
             sofa::type::Vec<3, Real> stressDirectionVec;
             sofa::type::Vec<3, double> triangleNormal;
@@ -105,14 +146,19 @@ void TearPlugin<DataTypes>::addForce(const core::MechanicalParams* /*params*/, D
             triangleVertices.push_back(sofa::type::Vector3(p[1]));
             triangleVertices.push_back(sofa::type::Vector3(p[2]));*/
 
-            unsigned int ver1, ver2, ver3, t2v3;
             sofa::type::Vec<3, Real> edgeDirectionVec;
             double maxDotProduct = 0, dotProduct;
-            for (unsigned int i = 0; i < 3; i++)
+            EdgeID inciesEdge;
+
+            if (pointSide == 0)
             {
-                for (unsigned int j = i + 1; j < 3; j++)
+                EdgesInTriangle eInTri = m_topology->getEdgesInTriangle(maxStressTriangleID);
+                for (unsigned int i = 0; i < 3; i++)
                 {
-                    Coord edgeDirection = p[j] - p[i];
+                    Coord edgesPos[2];
+                    triangleGeo->getEdgeVertexCoordinates(eInTri[i], edgesPos);
+
+                    Coord edgeDirection = p[1] - p[0];
                     edgeDirectionVec[0] = (Real)(edgeDirection[0]);
                     edgeDirectionVec[1] = (Real)(edgeDirection[1]);
                     edgeDirectionVec[2] = (Real)(edgeDirection[2]);
@@ -121,104 +167,278 @@ void TearPlugin<DataTypes>::addForce(const core::MechanicalParams* /*params*/, D
 
                     if (fabs(dotProduct) > maxDotProduct)
                     {
-                        ver1 = i; ver2 = j; ver3 = (unsigned int)fabs((int)i + (int)j - (int)3);
+                        inciesEdge = eInTri[i];
                         maxDotProduct = fabs(dotProduct);
                     }
                 }
             }
-
-            const Triangle& t1 = m_topology->getTriangle(maxStressTriangleID);
-            EdgeID edgeID = m_topology->getEdgeIndex(t1[ver1], t1[ver2]);
-            std::vector<TriangleID> tAroundEdge = m_topology->getTrianglesAroundEdge(edgeID);
-
-            if (tAroundEdge.size() == 2)
+            else
             {
-                type::vector< type::vector< Index > > p_ancestors(1);
-                sofa::type::vector< type::vector< double > > p_baryCoefs(1);
-                for (int i = 0; i < p_ancestors.size(); i++)
+                EdgesAroundVertex edges;
+                if (pointSide == 1)         edges = trueEdgeAroundPa;
+                else if (pointSide == 2)    edges = trueEdgeAroundPb;
+
+                for (int i = 0; i < edges.size(); i++)
                 {
-                    auto& ancestor = p_ancestors[i];
-                    ancestor.resize(3);
-                    ancestor[0] = t1[0];
-                    ancestor[1] = t1[1];
-                    ancestor[2] = t1[2];
+                    Coord edgesPos[2];
+                    triangleGeo->getEdgeVertexCoordinates(edges[i], edgesPos);
+
+                    Coord edgeDirection = edgesPos[1] - edgesPos[0];
+                    edgeDirectionVec[0] = (Real)(edgeDirection[0]);
+                    edgeDirectionVec[1] = (Real)(edgeDirection[1]);
+                    edgeDirectionVec[2] = (Real)(edgeDirection[2]);
+                    edgeDirectionVec = edgeDirectionVec.normalized();
+                    dotProduct = edgeDirectionVec * intersectedLine;
+
+                    if (fabs(dotProduct) > maxDotProduct)
+                    {
+                        inciesEdge = edges[i];
+                        maxDotProduct = fabs(dotProduct);
+                    }
                 }
-                for (int i = 0; i < p_baryCoefs.size(); i++)
-                {
-                    type::vector<double>& baryCoef = p_baryCoefs[i];
-                    baryCoef.resize(3);
-                    baryCoef.fill(0);
-                    baryCoef[ver1] = 0.5;
-                    baryCoef[ver2] = 0.5;
-                }
-
-                triangleMod->addPoints(1, p_ancestors, p_baryCoefs, true);
-                triangleMod->addPoints(1, p_ancestors, p_baryCoefs, true);
-                PointID newPointIndex1 = m_topology->getNbPoints() - 1;
-                PointID newPointIndex2 = m_topology->getNbPoints() - 2;
-                dmsg_warning() << "newPointIndex1: " << newPointIndex1;
-                dmsg_warning() << "newPointIndex2: " << newPointIndex2;
-                const Coord& NewPos1 = triangleGeo->getPointPosition(newPointIndex1);
-                const Coord& NewPos2 = triangleGeo->getPointPosition(newPointIndex2);
-                dmsg_warning() << "NewPos1: " << NewPos1;
-                dmsg_warning() << "NewPos2: " << NewPos2;
-
-                //Draw new point
-                const Coord& pPos1 = triangleGeo->getPointPosition(newPointIndex1);
-                pointVertices.push_back(sofa::type::Vector3(pPos1)); 
-                const Coord& pPos2 = triangleGeo->getPointPosition(newPointIndex2);
-                pointVertices.push_back(sofa::type::Vector3(pPos2));
-                //Draw max stress triangle
-                /*const Coord& tPos1 = triangleGeo->getPointPosition(t1[0]);
-                triangleVertices.push_back(tPos1);
-                const Coord& tPos2 = triangleGeo->getPointPosition(t1[1]);
-                triangleVertices.push_back(tPos2);
-                const Coord& tPos3 = triangleGeo->getPointPosition(t1[2]);
-                triangleVertices.push_back(tPos3);*/
-
-                const Triangle& t2 = m_topology->getTriangle((tAroundEdge[0] == maxStressTriangleID) ? tAroundEdge[1] : tAroundEdge[0]);
-                if ((t2[0] == t1[ver1] && t2[1] == t1[ver2]) || (t2[0] == t1[ver2] && t2[1] == t1[ver1]))       t2v3 = 2;
-                else if ((t2[1] == t1[ver1] && t2[2] == t1[ver2]) || (t2[1] == t1[ver2] && t2[2] == t1[ver1]))  t2v3 = 0;
-                else if ((t2[0] == t1[ver1] && t2[2] == t1[ver2]) || (t2[0] == t1[ver2] && t2[2] == t1[ver1]))  t2v3 = 1;
-
-                
-                type::vector<Triangle> newTriangle;
-                newTriangle.resize(4);
-                newTriangle[0][0] = t1[ver3]; newTriangle[0][1] = t1[ver2]; newTriangle[0][2] = newPointIndex1;
-                newTriangle[1][1] = t1[ver3]; newTriangle[1][0] = t1[ver1]; newTriangle[1][2] = newPointIndex1;
-                newTriangle[2][1] = t2[t2v3]; newTriangle[2][0] = t1[ver2]; newTriangle[2][2] = newPointIndex2;
-                newTriangle[3][0] = t2[t2v3]; newTriangle[3][1] = t1[ver1]; newTriangle[3][2] = newPointIndex2;
-                dmsg_warning() << "newTriangle: " << newTriangle;
-
-                triangleMod->addTriangles(newTriangle);
-
-                for (int i = 0; i < 4; i++)
-                {
-                    const Triangle& newT1 = m_topology->getTriangle(nbTriangle+i);
-                    const Coord& newTPos1 = triangleGeo->getPointPosition(newT1[0]);
-                    triangleVertices.push_back(newTPos1);
-                    const Coord& newTPos2 = triangleGeo->getPointPosition(newT1[1]);
-                    triangleVertices.push_back(newTPos2);
-                    const Coord& newTPos3 = triangleGeo->getPointPosition(newT1[2]);
-                    triangleVertices.push_back(newTPos3);
-                }
-
-               /* dmsg_warning() << "Start cut: ";
-                type::vector<EdgeID> inciesEdge;
-                inciesEdge.resize(2);
-                inciesEdge[0] = m_topology->getEdgeIndex(t1[ver1], newPointIndex);
-                inciesEdge[1] = m_topology->getEdgeIndex(t1[ver2], newPointIndex);
-                dmsg_warning() << "insices edge " << inciesEdge;
-
-                sofa::type::vector<PointID> new_points;
-                sofa::type::vector<PointID> end_points;
-                bool reachBorder = false;
-
-                bool incieseOk = triangleGeo->InciseAlongEdgeList(inciesEdge, new_points, end_points, reachBorder);
-                dmsg_warning() << "end_points " << end_points;*/
-
-                triangleMod->removeItems(tAroundEdge);
             }
+            Edge pointInInciesEdge = m_topology->getEdge(inciesEdge);
+            std::vector<TriangleID> tAroundInciesEdge = m_topology->getTrianglesAroundEdge(inciesEdge);
+            const Triangle& t1 = m_topology->getTriangle(tAroundInciesEdge[0]);
+            const Triangle& t2 = m_topology->getTriangle(tAroundInciesEdge[1]);
+            PointID t1v1, t1v2, t1v3, t2v3;
+            for (int i = 0; i < 3; i++)
+            {
+                if (t1[i] == pointInInciesEdge[0]) t1v1 = i;
+                if (t1[i] == pointInInciesEdge[1]) t1v2 = i;
+                if (t1[i] != pointInInciesEdge[0] && t1[i] != pointInInciesEdge[1])
+                    t1v3 = i;
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                if (t2[i] != pointInInciesEdge[0] && t2[i] != pointInInciesEdge[1])
+                    t2v3 = i;
+            }
+
+            type::vector< type::vector< Index > > p_ancestors(1);
+            sofa::type::vector< type::vector< double > > p_baryCoefs(1);
+            auto& ancestor = p_ancestors[0];
+            ancestor.resize(3);
+            ancestor[0] = t1[0];
+            ancestor[1] = t1[1];
+            ancestor[2] = t1[2];
+
+            type::vector<double>& baryCoef = p_baryCoefs[0];
+            baryCoef.resize(3);
+            baryCoef.fill(0);
+            baryCoef[t1v1] = 0.5;
+            baryCoef[t1v2] = 0.5;
+
+            triangleMod->addPoints(1, p_ancestors, p_baryCoefs, true);
+            PointID newPointIndex = m_topology->getNbPoints() - 1;
+            dmsg_warning() << "newPointIndex1: " << newPointIndex;
+            sofa::type::Vec<3, Real> NewPos = triangleGeo->getPointPosition(newPointIndex);
+            dmsg_warning() << "NewPos1: " << NewPos;
+            //Draw new point
+            //pointVertices.push_back(sofa::type::Vector3(NewPos));
+
+            //Draw max stress triangle
+            /*const Coord& tPos1 = triangleGeo->getPointPosition(t1[0]);
+            triangleVertices.push_back(tPos1);
+            const Coord& tPos2 = triangleGeo->getPointPosition(t1[1]);
+            triangleVertices.push_back(tPos2);
+            const Coord& tPos3 = triangleGeo->getPointPosition(t1[2]);
+            triangleVertices.push_back(tPos3);*/
+
+              
+            type::vector<Triangle> newTriangle;
+            newTriangle.resize(4);
+            newTriangle[0][0] = t1[t1v3]; newTriangle[0][1] = pointInInciesEdge[0]; newTriangle[0][2] = newPointIndex;
+            newTriangle[1][1] = t1[t1v3]; newTriangle[1][0] = pointInInciesEdge[1]; newTriangle[1][2] = newPointIndex;
+            newTriangle[2][1] = t2[t2v3]; newTriangle[2][0] = pointInInciesEdge[0]; newTriangle[2][2] = newPointIndex;
+            newTriangle[3][0] = t2[t2v3]; newTriangle[3][1] = pointInInciesEdge[1]; newTriangle[3][2] = newPointIndex;
+            dmsg_warning() << "newTriangle: " << newTriangle;
+
+            triangleMod->addTriangles(newTriangle);
+            triangleMod->removeItems(tAroundInciesEdge);
+
+            dmsg_warning() << "Start cut: ";
+            type::vector<EdgeID> inciesEdges;
+            inciesEdges.resize(2);
+            inciesEdges[0] = m_topology->getEdgeIndex(pointInInciesEdge[0], newPointIndex);
+            inciesEdges[1] = m_topology->getEdgeIndex(pointInInciesEdge[1], newPointIndex);
+            dmsg_warning() << "insices edge " << inciesEdges;
+            /*const Coord& newTPos1 = triangleGeo->getPointPosition(pointInInciesEdge[0]);
+            lineVertices.push_back(newTPos1);
+            const Coord& newTPos2 = triangleGeo->getPointPosition(newPointIndex);
+            lineVertices.push_back(newTPos2);
+            const Coord& newTPos3 = triangleGeo->getPointPosition(pointInInciesEdge[1]);
+            lineVertices.push_back(newTPos3);*/
+
+            sofa::type::vector<PointID> new_points;
+            sofa::type::vector<PointID> end_points;
+            bool reachBorder = false;
+
+            bool incieseOk = triangleGeo->InciseAlongEdgeList(inciesEdges, new_points, end_points, reachBorder);
+            dmsg_warning() << "end_points " << end_points << " new_points " << new_points;
+            if (end_points.size() < 1)
+            {
+                reachEnd = true;
+                dmsg_warning() << ">>>>>>>>>>>>>>>>>>>>>>>>>> REACH END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<";
+            }
+            if (incieseOk && !reachEnd)
+            {
+                if (pointSide == 0)
+                {
+                    lastPa = end_points[0];
+                    trueEdgeAroundPa.clear();
+
+                    type::vector<EdgeID> forbiddenEdge;
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(t1[t1v3], lastPa));
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(t2[t2v3], lastPa));
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(new_points[0], lastPa));
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(newPointIndex, lastPa));
+
+                    edgesAroundPa = m_topology->getEdgesAroundVertex(lastPa);
+                    for (int i = 0; i < edgesAroundPa.size(); i++)
+                    {
+                        bool exist = false;
+                        for (int j = 0; j < forbiddenEdge.size(); j++)
+                        {
+                            if (edgesAroundPa[i] == forbiddenEdge[j])
+                                exist = true;
+                        }
+                        if (!exist)
+                            trueEdgeAroundPa.push_back(edgesAroundPa[i]);
+                    }
+                    dmsg_warning() << "trueEdgeAroundPa " << trueEdgeAroundPa;
+
+
+                    lastPb = end_points[1];
+                    trueEdgeAroundPb.clear();
+
+                    forbiddenEdge.clear();
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(t1[t1v3], lastPb));
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(t2[t2v3], lastPb));
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(new_points[0], lastPb));
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(newPointIndex, lastPb));
+
+                    edgesAroundPb = m_topology->getEdgesAroundVertex(lastPb);
+                    for (int i = 0; i < edgesAroundPb.size(); i++)
+                    {
+                        bool exist = false;
+                        for (int j = 0; j < forbiddenEdge.size(); j++)
+                        {
+                            if (edgesAroundPb[i] == forbiddenEdge[j])
+                                exist = true;
+                        }
+                        if (!exist)
+                            trueEdgeAroundPb.push_back(edgesAroundPb[i]);
+                    }
+                    dmsg_warning() << "trueEdgeAroundPa " << trueEdgeAroundPb;
+                }
+                else if (pointSide == 1)
+                {
+                    lastPa = end_points[0];
+                    trueEdgeAroundPa.clear();
+
+                    type::vector<EdgeID> forbiddenEdge;
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(t1[t1v3], lastPa));
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(t2[t2v3], lastPa));
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(newPointIndex, lastPa));
+
+                    sofa::type::Vec<3, Real> checkPos = triangleGeo->getPointPosition(new_points[0]);
+                    unsigned int newPointIdx;
+                    if ((checkPos - NewPos).norm() == 0) { newPointIdx = 0; dmsg_warning() << "is Zero"; }
+                    else                                 newPointIdx = 1;
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(new_points[newPointIdx], lastPa));
+
+                    edgesAroundPa = m_topology->getEdgesAroundVertex(lastPa);
+                    for (int i = 0; i < edgesAroundPa.size(); i++)
+                    {
+                        bool exist = false;
+                        for (int j = 0; j < forbiddenEdge.size(); j++)
+                        {
+                            if (edgesAroundPa[i] == forbiddenEdge[j])
+                                exist = true;
+                        }
+                        if (!exist)
+                            trueEdgeAroundPa.push_back(edgesAroundPa[i]);
+                    }
+                    dmsg_warning() << "trueEdgeAroundPa " << trueEdgeAroundPa;
+                }
+                else if (pointSide == 2)
+                {
+                    lastPb = end_points[0];
+                    trueEdgeAroundPb.clear();
+
+                    type::vector<EdgeID> forbiddenEdge;
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(t1[t1v3], lastPb));
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(t2[t2v3], lastPb));
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(newPointIndex, lastPb));
+
+                    sofa::type::Vec<3, Real> checkPos = triangleGeo->getPointPosition(new_points[0]);
+                    unsigned int newPointIdx;
+                    if ((checkPos - NewPos).norm() == 0) { newPointIdx = 0; dmsg_warning() << "is Zero"; }
+                    else                                    newPointIdx = 1;
+                    forbiddenEdge.push_back(m_topology->getEdgeIndex(new_points[newPointIdx], lastPb));
+
+                    edgesAroundPb = m_topology->getEdgesAroundVertex(lastPb);
+                    for (int i = 0; i < edgesAroundPb.size(); i++)
+                    {
+                        bool exist = false;
+                        for (int j = 0; j < forbiddenEdge.size(); j++)
+                        {
+                            if (edgesAroundPb[i] == forbiddenEdge[j])
+                                exist = true;
+                        }
+                        if (!exist)
+                            trueEdgeAroundPb.push_back(edgesAroundPb[i]);
+                    }
+                    dmsg_warning() << "trueEdgeAroundPa " << trueEdgeAroundPb;
+                }
+                
+                    
+                /*TrianglesAroundVertex tAround = m_topology->getTrianglesAroundEdge(forbiddenEdge[0]);
+                forbiddenTriangle.push_back(tAround[0]); forbiddenTriangle.push_back(tAround[1]);
+                tAround = m_topology->getTrianglesAroundEdge(forbiddenEdge[1]);
+                forbiddenTriangle.push_back(tAround[0]); forbiddenTriangle.push_back(tAround[1]);
+
+                for (int i = 0; i < AllTriAroundP.size(); i++)
+                {
+                    bool exist = false;
+                    for (int j = 0; j < forbiddenTriangle.size(); j++)
+                    {
+                        if (AllTriAroundP[i] == forbiddenTriangle[j])
+                            exist = true;
+                    }
+                    if (!exist)
+                    {
+                        trianglesAroundPointA.push_back(AllTriAroundP[i]);
+                    }
+                }*/
+            }
+
+            /*std::vector<TriangleID> tAroundFirstP = m_topology->getTrianglesAroundVertex(newPointIndex);
+            std::vector<TriangleID> tAroundSecondP = m_topology->getTrianglesAroundVertex(new_points[0]);
+                
+            for (int i = 0; i < tAroundFirstP.size(); i++)
+            {
+                const Triangle& newT1 = m_topology->getTriangle(tAroundFirstP[i]);
+                const Coord& newTPos1 = triangleGeo->getPointPosition(newT1[0]);
+                triangleVertices.push_back(newTPos1);
+                const Coord& newTPos2 = triangleGeo->getPointPosition(newT1[1]);
+                triangleVertices.push_back(newTPos2);
+                const Coord& newTPos3 = triangleGeo->getPointPosition(newT1[2]);
+                triangleVertices.push_back(newTPos3);
+            }
+
+            for (int i = 0; i < tAroundSecondP.size(); i++)
+            {
+                const Triangle& newT1 = m_topology->getTriangle(tAroundSecondP[i]);
+                const Coord& newTPos1 = triangleGeo->getPointPosition(newT1[0]);
+                triangleVertices.push_back(newTPos1);
+                const Coord& newTPos2 = triangleGeo->getPointPosition(newT1[1]);
+                triangleVertices.push_back(newTPos2);
+                const Coord& newTPos3 = triangleGeo->getPointPosition(newT1[2]);
+                triangleVertices.push_back(newTPos3);
+            }*/
+
         }
         else
         {
@@ -530,10 +750,20 @@ void TearPlugin<DataTypes>::draw(const core::visual::VisualParams* vparams)
      {
          sofa::type::RGBAColor color = sofa::type::RGBAColor(1, 0, 0, 1);
          vparams->drawTool()->drawPoints(pointVertices, 5, color);
-         color = sofa::type::RGBAColor(1,0,0,1);
+         color = sofa::type::RGBAColor(0,1,0,1);
          vparams->drawTool()->drawLines(lineVertices, 2, color);
-         color = sofa::type::RGBAColor(0,0,1,1);
-         vparams->drawTool()->drawTriangles(triangleVertices, color);
+
+         size_t nbTri = triangleVertices.size() / 3;
+         for (int i = 0; i < nbTri; i++)
+         {
+             std::vector<type::Vector3> drawTri;
+             drawTri.push_back(triangleVertices[3 * i + 0]);
+             drawTri.push_back(triangleVertices[3 * i + 1]);
+             drawTri.push_back(triangleVertices[3 * i + 2]);
+
+             color = sofa::type::RGBAColor(i / (float)nbTri, 0, 1 - (i / (float)nbTri), 1);
+             vparams->drawTool()->drawTriangles(drawTri, color);
+         }
          //lineVertices.clear();
          //triangleVertices.clear();
          shouldDraw = false;

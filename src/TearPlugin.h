@@ -103,6 +103,8 @@ protected:
     EdgesAroundVertex edgesAroundPb,trueEdgeAroundPb;
 
     unsigned int lastPa,lastPb;
+    bool reachEnd = false;
+
 public:
     /// Init function
     void init() override;
