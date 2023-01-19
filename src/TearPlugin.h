@@ -1,24 +1,24 @@
 /******************************************************************************
-*                 SOFA, Simulation Open-Framework Architecture                *
-*                    (c) 2006 INRIA, USTL, UJF, CNRS, MGH                     *
-*                                                                             *
-* This program is free software; you can redistribute it and/or modify it     *
-* under the terms of the GNU Lesser General Public License as published by    *
-* the Free Software Foundation; either version 2.1 of the License, or (at     *
-* your option) any later version.                                             *
-*                                                                             *
-* This program is distributed in the hope that it will be useful, but WITHOUT *
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or       *
-* FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License *
-* for more details.                                                           *
-*                                                                             *
-* You should have received a copy of the GNU Lesser General Public License    *
-* along with this program. If not, see <http://www.gnu.org/licenses/>.        *
-*******************************************************************************
-* Authors: Alireza Montazeri                                                  *
-*                                                                             *
-* Contact information: alireza.montazeri9675@gmail.com                        *
-******************************************************************************/
+ *                 SOFA, Simulation Open-Framework Architecture                *
+ *                    (c) 2006 INRIA, USTL, UJF, CNRS, MGH                     *
+ *                                                                             *
+ * This program is free software; you can redistribute it and/or modify it     *
+ * under the terms of the GNU Lesser General Public License as published by    *
+ * the Free Software Foundation; either version 2.1 of the License, or (at     *
+ * your option) any later version.                                             *
+ *                                                                             *
+ * This program is distributed in the hope that it will be useful, but WITHOUT *
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or       *
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License *
+ * for more details.                                                           *
+ *                                                                             *
+ * You should have received a copy of the GNU Lesser General Public License    *
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.        *
+ *******************************************************************************
+ * Authors: Alireza Montazeri                                                  *
+ *                                                                             *
+ * Contact information: alireza.montazeri9675@gmail.com                        *
+ ******************************************************************************/
 #ifndef SOFA_TEARPLUGIN_H
 #define SOFA_TEARPLUGIN_H
 
@@ -40,88 +40,89 @@
 
 #include <sofa/helper/map.h>
 
-
 namespace sofa::component::forcefield
 {
 
-template<class DataTypes>
-class TearPlugin : public core::behavior::ForceField<DataTypes>
-{
-public:
-    SOFA_CLASS(SOFA_TEMPLATE(TearPlugin, DataTypes), SOFA_TEMPLATE(core::behavior::ForceField, DataTypes));
+    template <class DataTypes>
+    class TearPlugin : public core::behavior::ForceField<DataTypes>
+    {
+    public:
+        SOFA_CLASS(SOFA_TEMPLATE(TearPlugin, DataTypes), SOFA_TEMPLATE(core::behavior::ForceField, DataTypes));
 
-    typedef core::behavior::ForceField<DataTypes> Inherit;
-    typedef typename DataTypes::Deriv Deriv;
-    typedef typename DataTypes::VecCoord VecCoord;
-    typedef typename DataTypes::VecDeriv VecDeriv;
-    typedef core::objectmodel::Data<VecCoord> DataVecCoord;
-    typedef core::objectmodel::Data<VecDeriv> DataVecDeriv;
+        typedef core::behavior::ForceField<DataTypes> Inherit;
+        typedef typename DataTypes::Deriv Deriv;
+        typedef typename DataTypes::VecCoord VecCoord;
+        typedef typename DataTypes::VecDeriv VecDeriv;
+        typedef core::objectmodel::Data<VecCoord> DataVecCoord;
+        typedef core::objectmodel::Data<VecDeriv> DataVecDeriv;
 
-    typedef sofa::component::forcefield::TriangularFEMForceField<defaulttype::Vec3Types>::TriangleInformation triangleInfo;
-    typedef core::topology::BaseMeshTopology::TriangleID TriangleID;
-    typedef core::topology::BaseMeshTopology::EdgeID EdgeID;
-    typedef core::topology::BaseMeshTopology::PointID PointID;
-    typedef core::topology::BaseMeshTopology::Triangle Triangle;
-    typedef core::topology::BaseMeshTopology::TrianglesAroundVertex TrianglesAroundVertex;
-    typedef core::topology::BaseMeshTopology::EdgesInTriangle EdgesInTriangle;
+        typedef sofa::component::forcefield::TriangularFEMForceField<defaulttype::Vec3Types>::TriangleInformation triangleInfo;
+        typedef core::topology::BaseMeshTopology::TriangleID TriangleID;
+        typedef core::topology::BaseMeshTopology::EdgeID EdgeID;
+        typedef core::topology::BaseMeshTopology::PointID PointID;
+        typedef core::topology::BaseMeshTopology::Triangle Triangle;
+        typedef core::topology::BaseMeshTopology::TrianglesAroundVertex TrianglesAroundVertex;
+        typedef core::topology::BaseMeshTopology::EdgesInTriangle EdgesInTriangle;
 
-    typedef sofa::core::topology::BaseMeshTopology::Edge Edge;
-    typedef sofa::core::topology::BaseMeshTopology::EdgesAroundVertex EdgesAroundVertex;
+        typedef sofa::core::topology::BaseMeshTopology::Edge Edge;
+        typedef sofa::core::topology::BaseMeshTopology::EdgesAroundVertex EdgesAroundVertex;
 
-    typedef typename DataTypes::Real Real;
-    
-public:
-    Data<Real> d_tearThreshold;
-    Data<bool> d_draw;
-    double tearStep;
+        typedef typename DataTypes::Real Real;
+        typedef typename DataTypes::Coord Coord;
 
-protected:    
-    /// Component constructor
-    TearPlugin();
-    /// Pointer to the current topology
-    sofa::core::topology::BaseMeshTopology* m_topology;
-    sofa::component::forcefield::TriangularFEMForceField<defaulttype::Vec3Types>* triangleFF;
-    sofa::component::topology::TriangleSetTopologyModifier* triangleMod;
-    sofa::component::topology::TriangleSetGeometryAlgorithms<defaulttype::Vec3Types>* triangleGeo;
+    public:
+        Data<Real> d_tearThreshold;
+        Data<bool> d_draw;
+        double tearStep;
 
-    core::topology::BaseMeshTopology::TrianglesAroundVertex trianglesAroundPointA;
-    core::topology::BaseMeshTopology::TrianglesAroundVertex trianglesAroundPointB;
-    Coord a;
-    Coord b;
-    TriangleID ind_ta;
-    TriangleID ind_tb;
+    protected:
+        /// Component constructor
+        TearPlugin();
+        /// Pointer to the current topology
+        sofa::core::topology::BaseMeshTopology *m_topology;
+        sofa::component::forcefield::TriangularFEMForceField<defaulttype::Vec3Types> *triangleFF;
+        sofa::component::topology::TriangleSetTopologyModifier *triangleMod;
+        sofa::component::topology::TriangleSetGeometryAlgorithms<defaulttype::Vec3Types> *triangleGeo;
 
-    std::vector<type::Vector3> pointVertices;
-    std::vector<type::Vector3> lineVertices;
-    std::vector<type::Vector3> triangleVertices;
-    bool shouldDraw;
+        core::topology::BaseMeshTopology::TrianglesAroundVertex trianglesAroundPointA;
+        core::topology::BaseMeshTopology::TrianglesAroundVertex trianglesAroundPointB;
+        Coord a;
+        Coord b;
+        TriangleID ind_ta;
+        TriangleID ind_tb;
 
-    TrianglesAroundVertex triAroundPa;
-    TrianglesAroundVertex triAroundPb;
+        std::vector<type::Vector3> pointVertices;
+        std::vector<type::Vector3> lineVertices;
+        std::vector<type::Vector3> triangleVertices;
+        bool shouldDraw;
 
-    EdgesAroundVertex edgesAroundPa,trueEdgeAroundPa;
-    EdgesAroundVertex edgesAroundPb,trueEdgeAroundPb;
+        TrianglesAroundVertex triAroundPa;
+        TrianglesAroundVertex triAroundPb;
 
-    unsigned int lastPa,lastPb;
-    bool reachEnd = false;
+        EdgesAroundVertex edgesAroundPa, trueEdgeAroundPa;
+        EdgesAroundVertex edgesAroundPb, trueEdgeAroundPb;
 
-public:
-    /// Init function
-    void init() override;
+        unsigned int lastPa, lastPb;
+        bool reachEnd = false;
 
-    /// Forces addition for explicit and implicit integration schemes
-    virtual void addForce (const core::MechanicalParams* params, DataVecDeriv& currentForce, const DataVecCoord& currentPosition, const DataVecDeriv& currentVelocities) override;
+    public:
+        /// Init function
+        void init() override;
 
-    /// Forces addition for implicit integration schemes
-    virtual void addDForce(const core::MechanicalParams* /*mparams*/, DataVecDeriv& /*d_df*/ , const DataVecDeriv& /*d_dx*/) override {}
+        /// Forces addition for explicit and implicit integration schemes
+        virtual void addForce(const core::MechanicalParams *params, DataVecDeriv &currentForce, const DataVecCoord &currentPosition, const DataVecDeriv &currentVelocities) override;
 
-    virtual SReal getPotentialEnergy(const core::MechanicalParams* /*params*/, const DataVecCoord& /*x*/) const override { return 0; } // Keep it simpl
+        /// Forces addition for implicit integration schemes
+        virtual void addDForce(const core::MechanicalParams * /*mparams*/, DataVecDeriv & /*d_df*/, const DataVecDeriv & /*d_dx*/) override {}
 
-    void draw(const core::visual::VisualParams* vparams) override;
-protected:
-    bool firstCut;
-    unsigned int stepCnt;
-};
+        virtual SReal getPotentialEnergy(const core::MechanicalParams * /*params*/, const DataVecCoord & /*x*/) const override { return 0; } // Keep it simpl
+
+        void draw(const core::visual::VisualParams *vparams) override;
+
+    protected:
+        bool firstCut;
+        unsigned int stepCnt;
+    };
 
 } // namespace sofa::component::forcefield
 
